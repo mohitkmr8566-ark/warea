@@ -1,0 +1,32 @@
+{
+  // ✅ Tailwind CSS IntelliSense
+  "css.validate": false,
+  "tailwindCSS.includeLanguages": {
+    "plaintext": "html",
+    "javascript": "javascript",
+    "javascriptreact": "javascriptreact",
+    "typescript": "typescript",
+    "typescriptreact": "typescriptreact"
+  },
+  // ✅ Formatting
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode", // Use Prettier
+  // ✅ Indentation
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  // ✅ Organize imports automatically
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": true
+  },
+  // ✅ Tailwind class sorting suggestion
+  "tailwindCSS.experimental.classRegex": [
+    [
+      "class(Name)?\\s*=\\s*[\"'`]([^\"'`]*)([\"'`])",
+      2
+    ]
+  ],
+  // ✅ File handling
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true
+}

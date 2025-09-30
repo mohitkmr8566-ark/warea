@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Put applies inside a layer so Tailwind knows where to resolve them */
+@layer base {
+  html, body {
+    @apply bg-white text-gray-900 font-sans antialiased;
+  }
+}
+
+/* A reusable page container */
+.page-container {
+  @apply max-w-7xl mx-auto px-6;
+}
+
+/* Avoid tiny inline gaps from images */
+img { display: block; }
