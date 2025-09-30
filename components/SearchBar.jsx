@@ -1,4 +1,3 @@
-cat > components/SearchBar.jsx <<'EOF'
 "use client";
 
 export default function SearchBar({ value, onChange, placeholder = "Search products..." }) {
@@ -14,4 +13,3 @@ export default function SearchBar({ value, onChange, placeholder = "Search produ
     </div>
   );
 }
-EOF
