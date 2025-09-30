@@ -41,6 +41,7 @@ export default function Header() {
           <Link href="/shop">Shop</Link>
           <Link href="/about">About</Link>
           <Link href="/contact">Contact</Link>
+          <Link href="/help">Help</Link>
         </nav>
 
         {/* Icons */}
@@ -98,6 +99,8 @@ export default function Header() {
           <Link href="/about" onClick={() => setOpen(false)}>About</Link>
           <Link href="/contact" onClick={() => setOpen(false)}>Contact</Link>
           <Link href="/profile" onClick={() => setOpen(false)}>Profile</Link>
+          <Link href="/help" onClick={() => setOpen(false)}>Help</Link> {/* <-- Add this */}
+
         </div>
       )}
     </header>
