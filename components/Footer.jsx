@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { Facebook, Instagram, Twitter, Youtube } from "lucide-react";
 
 export default function Footer() {
   return (
     <footer className="bg-gray-50 border-t mt-16">
       <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-4 gap-8 text-gray-700">
-        
+
         {/* Brand / About */}
         <div>
           <h3 className="text-xl font-bold mb-4 font-serif">Warea</h3>
@@ -21,6 +22,7 @@ export default function Footer() {
             <li><Link href="/shop">Shop</Link></li>
             <li><Link href="/about">About Us</Link></li>
             <li><Link href="/contact">Contact</Link></li>
+            <li><Link href="/help">Help</Link></li>
           </ul>
         </div>
 
@@ -51,6 +53,14 @@ export default function Footer() {
               Subscribe
             </button>
           </form>
+
+          {/* Social Icons */}
+          <div className="flex gap-4 mt-4 text-gray-600">
+            <Link href="#" aria-label="Facebook"><Facebook size={20} /></Link>
+            <Link href="#" aria-label="Instagram"><Instagram size={20} /></Link>
+            <Link href="#" aria-label="Twitter"><Twitter size={20} /></Link>
+            <Link href="#" aria-label="YouTube"><Youtube size={20} /></Link>
+          </div>
         </div>
       </div>
 
@@ -61,4 +71,3 @@ export default function Footer() {
     </footer>
   );
 }
-
