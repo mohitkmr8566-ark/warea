@@ -12,8 +12,8 @@ export default function CategorySection() {
     <section className="container py-12">
       <h2 className="text-3xl font-semibold text-center mb-8">Shop by Collection</h2>
 
-      {/* Centered grid with smaller images */}
-      <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 place-items-center max-w-5xl">
+      {/* Responsive grid */}
+      <div className="mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 place-items-center max-w-5xl">
         {categories.map((cat) => (
           <Link
             key={cat.name}
@@ -21,7 +21,7 @@ export default function CategorySection() {
             className="group block rounded-xl overflow-hidden border border-transparent
                        bg-white shadow-sm hover:shadow-xl hover:-translate-y-1
                        hover:border-yellow-500 transition-all duration-300
-                       w-32 sm:w-36 md:w-40 lg:w-44"
+                       w-28 sm:w-32 md:w-40 lg:w-44"
           >
             {/* Image container with fixed aspect ratio */}
             <div className="aspect-square overflow-hidden">
@@ -32,9 +32,9 @@ export default function CategorySection() {
               />
             </div>
 
-            {/* Text with hover color change */}
+            {/* Text */}
             <div className="py-2 text-center">
-              <h3 className="text-base font-medium transition-colors duration-300 group-hover:text-yellow-600">
+              <h3 className="text-sm sm:text-base font-medium transition-colors duration-300 group-hover:text-yellow-600">
                 {cat.name}
               </h3>
             </div>
