@@ -43,7 +43,7 @@ const heroSlides = [
 
 export default function Hero() {
   return (
-    <section className="relative w-full h-[70vh] md:h-[80vh] overflow-hidden">
+    <section className="relative w-full h-[65vh] sm:h-[70vh] md:h-[80vh] lg:h-[85vh] overflow-hidden">
       <Swiper
         modules={[Autoplay, Pagination, Navigation]}
         autoplay={{ delay: 4000, disableOnInteraction: false }}
@@ -63,19 +63,21 @@ export default function Hero() {
                 priority={i === 0}
                 className="object-cover object-center"
               />
+
               {/* Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent"></div>
+
               {/* Text Content */}
-              <div className="absolute bottom-12 md:bottom-20 left-6 md:left-16 text-white max-w-xl">
-                <h1 className="text-3xl md:text-5xl font-serif font-bold leading-tight drop-shadow-lg">
+              <div className="absolute bottom-10 sm:bottom-14 md:bottom-20 left-4 sm:left-10 md:left-16 text-white max-w-xs sm:max-w-md md:max-w-xl">
+                <h1 className="text-2xl sm:text-4xl md:text-5xl font-serif font-bold leading-snug drop-shadow-lg">
                   {slide.title}
                 </h1>
-                <p className="mt-4 text-sm md:text-lg text-gray-200 drop-shadow-md max-w-md">
+                <p className="mt-3 sm:mt-4 text-sm sm:text-base md:text-lg text-gray-200 drop-shadow-md max-w-md">
                   {slide.desc}
                 </p>
                 <Link
                   href="/shop"
-                  className="inline-block mt-6 px-6 py-3 bg-white text-black text-sm md:text-base font-semibold rounded-lg shadow-md hover:bg-gray-200 transition"
+                  className="inline-block mt-5 sm:mt-6 px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-black text-sm sm:text-base font-semibold rounded-lg shadow-md hover:bg-gray-200 transition"
                 >
                   Shop Now →
                 </Link>
