@@ -14,15 +14,10 @@ export default function Header() {
 
   return (
     <header className="border-b bg-white shadow-sm sticky top-0 z-40">
-      {/* Top Bar */}
-      <div className="bg-orange-50 text-center text-sm py-2 text-gray-700 font-medium">
-        ✨ Free Shipping on Orders Above ₹599 ✨
-      </div>
-
       {/* Main Header */}
-      <div className="page-container flex items-center justify-between h-16 md:h-20 px-2 md:px-0">
+      <div className="page-container flex items-center justify-between h-16 md:h-20 px-3 sm:px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 md:gap-4">
+        <Link href="/" className="flex items-center gap-2 sm:gap-4">
           <Image
             src="/logo.png"
             alt="Warea Logo"
