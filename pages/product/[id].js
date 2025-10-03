@@ -1,15 +1,16 @@
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { PRODUCTS } from "@/lib/products"; // ✅ named export
+import { PRODUCTS } from "@/lib/products";
 import { useCart } from "@/store/CartContext";
 import { useWishlist } from "@/store/WishlistContext";
+import toast from "react-hot-toast";
 
 export default function ProductDetailPage() {
   const router = useRouter();
   const { id } = router.query;
 
   const product = PRODUCTS?.find((p) => p.id === id);
-  const { addItem } = useCart(); // ✅ now safe
+  const { addItem } = useCart();
   const { toggleItem, wishlist } = useWishlist();
 
   const inWishlist = wishlist?.some((p) => p.id === id);
@@ -24,6 +25,20 @@ export default function ProductDetailPage() {
       </div>
     );
   }
+
+  const handleAddToCart = () => {
+    addItem(product);
+    toast.success(`${product.title} added to Cart ✅`);
+  };
+
+  const handleWishlist = () => {
+    toggleItem(product);
+    if (inWishlist) {
+      toast.error(`${product.title} removed from Wishlist ❌`);
+    } else {
+      toast.success(`${product.title} added to Wishlist ❤️`);
+    }
+  };
 
   return (
     <div className="page-container py-12 grid md:grid-cols-2 gap-12">
@@ -43,12 +58,12 @@ export default function ProductDetailPage() {
         <p className="text-2xl font-semibold mb-4">₹{product.price}</p>
 
         <div className="flex gap-3">
-          <button className="btn btn-primary" onClick={() => addItem(product)}>
+          <button className="btn btn-primary" onClick={handleAddToCart}>
             Add to Cart
           </button>
           <button
             className={`btn ${inWishlist ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => toggleItem(product)}
+            onClick={handleWishlist}
           >
             {inWishlist ? "✔ In Wishlist" : "♡ Add to Wishlist"}
           </button>
