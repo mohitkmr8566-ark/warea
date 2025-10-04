@@ -16,8 +16,8 @@ export default function MyApp({ Component, pageProps }) {
         <AuthProvider>
           <Toaster position="top-right" />
           <div className="min-h-screen flex flex-col">
-            <TopBar />        {/* single TopBar, non-sticky */}
-            <Header />        {/* sticky header (nav + icons) */}
+            <TopBar />
+            <Header />
             <main className="flex-1 page-container">
               <Component {...pageProps} />
             </main>
