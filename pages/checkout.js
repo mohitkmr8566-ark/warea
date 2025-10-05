@@ -3,10 +3,12 @@
 import { useCart } from "@/store/CartContext";
 import { useState } from "react";
 import { useRouter } from "next/router";
+import toast from "react-hot-toast";
 
 export default function CheckoutPage() {
-  const { items = [] } = useCart();
+  const { items = [], clearCart } = useCart();
   const router = useRouter();
+
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -32,22 +34,40 @@ export default function CheckoutPage() {
       return;
     }
 
-    console.log("Order placed:", { form, items });
-    router.push("/order-success");
+    // ✅ Save order to localStorage
+    const newOrder = {
+      id: Date.now(),
+      date: new Date().toLocaleString(),
+      items,
+      total: subtotal,
+      shipping: form,
+    };
+    const prev = JSON.parse(localStorage.getItem("orders") || "[]");
+    localStorage.setItem("orders", JSON.stringify([...prev, newOrder]));
+
+    // ✅ Clear cart + toast
+    toast.success("Order placed successfully ✅");
+    clearCart();
+
+    // ✅ Redirect after short delay
+    setTimeout(() => router.push("/order-success"), 1500);
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
       <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Address Form */}
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white shadow-md rounded-lg p-6">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6 bg-white shadow-md rounded-lg p-6"
+        >
           <h2 className="text-xl font-semibold mb-4">Shipping Address</h2>
           {error && <p className="text-red-600 text-sm">{error}</p>}
 
           <div>
-            <label className="block text-sm">Name</label>
+            <label className="block text-sm font-medium">Name</label>
             <input
               name="name"
               value={form.name}
@@ -57,7 +77,7 @@ export default function CheckoutPage() {
             />
           </div>
           <div>
-            <label className="block text-sm">Phone</label>
+            <label className="block text-sm font-medium">Phone</label>
             <input
               name="phone"
               value={form.phone}
@@ -67,7 +87,7 @@ export default function CheckoutPage() {
             />
           </div>
           <div>
-            <label className="block text-sm">Address</label>
+            <label className="block text-sm font-medium">Address</label>
             <textarea
               name="address"
               value={form.address}
@@ -77,9 +97,10 @@ export default function CheckoutPage() {
               placeholder="Street, Locality"
             />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm">Pincode</label>
+              <label className="block text-sm font-medium">Pincode</label>
               <input
                 name="pincode"
                 value={form.pincode}
@@ -89,7 +110,7 @@ export default function CheckoutPage() {
               />
             </div>
             <div>
-              <label className="block text-sm">City</label>
+              <label className="block text-sm font-medium">City</label>
               <input
                 name="city"
                 value={form.city}
@@ -99,8 +120,9 @@ export default function CheckoutPage() {
               />
             </div>
           </div>
+
           <div>
-            <label className="block text-sm">State</label>
+            <label className="block text-sm font-medium">State</label>
             <input
               name="state"
               value={form.state}
@@ -110,7 +132,10 @@ export default function CheckoutPage() {
             />
           </div>
 
-          <button type="submit" className="w-full bg-gray-900 text-white py-3 rounded-md hover:bg-gray-700">
+          <button
+            type="submit"
+            className="w-full bg-gray-900 text-white py-3 rounded-md hover:bg-gray-700 transition"
+          >
             Place Order
           </button>
         </form>
@@ -121,9 +146,12 @@ export default function CheckoutPage() {
           {items.length ? (
             <div className="space-y-4">
               {items.map((p) => (
-                <div key={p.id} className="flex justify-between text-sm">
+                <div
+                  key={p.id}
+                  className="flex justify-between text-sm border-b pb-1"
+                >
                   <span>
-                    {p.name} x {p.qty || 1}
+                    {p.title} × {p.qty || 1}
                   </span>
                   <span>₹{p.price * (p.qty || 1)}</span>
                 </div>
