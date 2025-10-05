@@ -1,75 +1,100 @@
 // store/AuthContext.js
-"use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { auth, googleProvider } from "@/lib/firebase";
 import {
+  getAuth,
+  GoogleAuthProvider,
   signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
+import app from "@/lib/firebase";
 import toast from "react-hot-toast";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+  const auth = getAuth(app);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  // 🔹 Listen for login/logout automatically
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser ? firebaseUser : null);
-      setLoading(false);
+      if (firebaseUser) {
+        setUser({
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || "Customer",
+        });
+        localStorage.setItem("user", JSON.stringify(firebaseUser));
+      } else {
+        setUser(null);
+        localStorage.removeItem("user");
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
-  // 🔹 Email signup
-  const signup = async (email, password) => {
+  // ✅ Email-password signup
+  const signup = async (email, password, name) => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      toast.success("Account created successfully 🎉");
-    } catch (error) {
-      toast.error(error.message);
+      const res = await createUserWithEmailAndPassword(auth, email, password);
+      const userData = {
+        email: res.user.email,
+        name: name || "Customer",
+      };
+      setUser(userData);
+      toast.success("Account created ✅");
+      return userData;
+    } catch (err) {
+      toast.error(err.message);
+      console.error(err);
     }
   };
 
-  // 🔹 Email login
+  // ✅ Email-password login
   const login = async (email, password) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast.success("Logged in successfully ✅");
-    } catch (error) {
-      toast.error(error.message);
+      const res = await signInWithEmailAndPassword(auth, email, password);
+      const userData = {
+        email: res.user.email,
+        name: res.user.displayName || "Customer",
+      };
+      setUser(userData);
+      toast.success("Logged in ✅");
+      return userData;
+    } catch (err) {
+      toast.error(err.message);
+      console.error(err);
     }
   };
 
-  // 🔹 Google login
+  // ✅ Google login
   const googleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
-      toast.success("Logged in with Google 🎯");
-    } catch (error) {
-      toast.error(error.message);
+      const provider = new GoogleAuthProvider();
+      const res = await signInWithPopup(auth, provider);
+      const userData = {
+        email: res.user.email,
+        name: res.user.displayName || "Customer",
+      };
+      setUser(userData);
+      toast.success("Signed in with Google ✅");
+      return userData;
+    } catch (err) {
+      toast.error(err.message);
+      console.error(err);
     }
   };
 
-  // 🔹 Logout
   const logout = async () => {
-    try {
-      await signOut(auth);
-      toast.success("Logged out successfully 👋");
-    } catch (error) {
-      toast.error(error.message);
-    }
+    await signOut(auth);
+    setUser(null);
+    toast.success("Logged out successfully");
   };
 
-  const value = { user, login, signup, googleLogin, logout, loading };
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, login, logout, signup, googleLogin }}>
+      {children}
     </AuthContext.Provider>
   );
 }
