@@ -1,12 +1,16 @@
 "use client";
 
 import { useCart } from "@/store/CartContext";
+import { useAuth } from "@/store/AuthContext";
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
 
 export default function CheckoutPage() {
   const { items = [], clearCart } = useCart();
+  const { user } = useAuth(); // 👈 get current user
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -25,7 +29,8 @@ export default function CheckoutPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  function handleSubmit(e) {
+  // ✅ Firestore Order Submission
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
 
@@ -34,23 +39,36 @@ export default function CheckoutPage() {
       return;
     }
 
-    // ✅ Save order to localStorage
-    const newOrder = {
-      id: Date.now(),
-      date: new Date().toLocaleString(),
-      items,
-      total: subtotal,
-      shipping: form,
-    };
-    const prev = JSON.parse(localStorage.getItem("orders") || "[]");
-    localStorage.setItem("orders", JSON.stringify([...prev, newOrder]));
+    if (items.length === 0) {
+      toast.error("Your cart is empty!");
+      return;
+    }
 
-    // ✅ Clear cart + toast
-    toast.success("Order placed successfully ✅");
-    clearCart();
+    try {
+      const orderData = {
+        userId: user?.email || "guest",
+        customer: form,
+        items: items.map((i) => ({
+          id: i.id,
+          name: i.title,
+          price: i.price,
+          qty: i.qty || 1,
+        })),
+        total: subtotal,
+        status: "Pending",
+        createdAt: serverTimestamp(),
+      };
 
-    // ✅ Redirect after short delay
-    setTimeout(() => router.push("/order-success"), 1500);
+      await addDoc(collection(db, "orders"), orderData);
+
+      toast.success("Order placed successfully ✅");
+      clearCart();
+
+      setTimeout(() => router.push("/order-success"), 1500);
+    } catch (err) {
+      console.error("Failed to place order:", err);
+      toast.error("Something went wrong. Please try again!");
+    }
   }
 
   return (
@@ -66,71 +84,35 @@ export default function CheckoutPage() {
           <h2 className="text-xl font-semibold mb-4">Shipping Address</h2>
           {error && <p className="text-red-600 text-sm">{error}</p>}
 
-          <div>
-            <label className="block text-sm font-medium">Name</label>
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="w-full border rounded-md px-3 py-2 mt-1"
-              placeholder="Full Name"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Phone</label>
-            <input
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-              className="w-full border rounded-md px-3 py-2 mt-1"
-              placeholder="Mobile Number"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Address</label>
-            <textarea
-              name="address"
-              value={form.address}
-              onChange={handleChange}
-              rows={3}
-              className="w-full border rounded-md px-3 py-2 mt-1"
-              placeholder="Street, Locality"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium">Pincode</label>
-              <input
-                name="pincode"
-                value={form.pincode}
-                onChange={handleChange}
-                className="w-full border rounded-md px-3 py-2 mt-1"
-                placeholder="123456"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">City</label>
-              <input
-                name="city"
-                value={form.city}
-                onChange={handleChange}
-                className="w-full border rounded-md px-3 py-2 mt-1"
-                placeholder="City"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">State</label>
-            <input
-              name="state"
-              value={form.state}
-              onChange={handleChange}
-              className="w-full border rounded-md px-3 py-2 mt-1"
-              placeholder="State"
-            />
-          </div>
+          {["name", "phone", "address", "pincode", "city", "state"].map(
+            (field) => (
+              <div key={field}>
+                <label className="block text-sm font-medium capitalize">
+                  {field}
+                </label>
+                {field === "address" ? (
+                  <textarea
+                    name={field}
+                    value={form[field]}
+                    onChange={handleChange}
+                    rows={3}
+                    className="w-full border rounded-md px-3 py-2 mt-1"
+                    placeholder={
+                      field === "address" ? "Street, Locality" : field
+                    }
+                  />
+                ) : (
+                  <input
+                    name={field}
+                    value={form[field]}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 mt-1"
+                    placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                  />
+                )}
+              </div>
+            )
+          )}
 
           <button
             type="submit"
