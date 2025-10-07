@@ -1,4 +1,5 @@
 // pages/admin/orders.js
+import AdminLayout from "@/components/admin/AdminLayout";
 import Head from "next/head";
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, orderBy, query, updateDoc, doc } from "firebase/firestore";
@@ -50,7 +51,7 @@ export default function AdminOrdersPage() {
     );
 
   return (
-    <>
+    <AdminLayout>
       <Head>
         <title>Admin Orders — Warea</title>
       </Head>
@@ -127,6 +128,6 @@ export default function AdminOrdersPage() {
           </div>
         )}
       </main>
-    </>
+    </AdminLayout>
   );
 }
