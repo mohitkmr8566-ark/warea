@@ -1,4 +1,5 @@
 // pages/admin/dashboard.js
+import AdminLayout from "@/components/admin/AdminLayout";
 import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/store/AuthContext";
@@ -157,7 +158,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <>
+    <AdminLayout>
       <Head>
         <title>Admin Dashboard — Warea</title>
       </Head>
@@ -270,6 +271,6 @@ export default function AdminDashboard() {
           </>
         )}
       </div>
-    </>
+    </AdminLayout>
   );
 }
