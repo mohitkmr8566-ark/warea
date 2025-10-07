@@ -1,4 +1,5 @@
 // components/Header.jsx
+import { useAuth } from "@/store/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,6 +13,7 @@ export default function Header() {
   const { wishlist = [] } = useWishlist() || {};
   const cartCount = cartItems.reduce((s, i) => s + (i.qty || 1), 0);
   const wishCount = wishlist.length;
+  const { user } = useAuth();
 
   // bump animation state when cartCount changes
   const [bump, setBump] = useState(false);
@@ -44,6 +46,16 @@ export default function Header() {
           <Link href="/about">About</Link>
           <Link href="/contact">Contact</Link>
           <Link href="/help">Help</Link>
+
+          {/* ✅ Admin link (only visible for your admin account) */}
+          {user?.email === "mohitkmr8566@gmail.com" && (
+            <Link
+              href="/admin/orders"
+              className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-100 px-2 py-1 rounded-md"
+            >
+            Admin Panel
+            </Link>
+          )}
         </nav>
 
         {/* Icons (push to right, don't shrink) */}

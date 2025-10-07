@@ -213,8 +213,11 @@ export default function ProfilePage() {
                         >
                           <div>
                             <p className="font-semibold text-sm">
-                              <Link href={`/order/${order.id}`}>
-                                <a className="text-blue-600 hover:underline">Order #{order.id.slice(0, 6)}</a>
+                              <Link
+                                href={`/order/${order.id}`}
+                                className="text-blue-600 hover:underline"
+                              >
+                                Order #{order.id.slice(0, 6)}
                               </Link>
                             </p>
                             <p className="text-xs text-gray-500">
