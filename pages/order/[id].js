@@ -1,7 +1,7 @@
 // pages/order/[id].js
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Head from "next/head";
 
@@ -12,26 +12,27 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ✅ Realtime Firestore Listener
   useEffect(() => {
     if (!id) return;
 
-    const fetchOrder = async () => {
-      try {
-        const ref = doc(db, "orders", id);
-        const snap = await getDoc(ref);
+    const unsub = onSnapshot(
+      doc(db, "orders", id),
+      (snap) => {
         if (snap.exists()) {
           setOrder({ id: snap.id, ...snap.data() });
         } else {
           setOrder(null);
         }
-      } catch (err) {
-        console.error("Failed to fetch order:", err);
-      } finally {
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Realtime fetch failed:", error);
         setLoading(false);
       }
-    };
+    );
 
-    fetchOrder();
+    return () => unsub();
   }, [id]);
 
   if (loading) {
@@ -48,6 +49,10 @@ export default function OrderDetailPage() {
     );
   }
 
+  // ✅ Status tracking stages
+  const statusSteps = ["Pending", "Processing", "Shipped", "Out for Delivery", "Delivered"];
+  const currentStep = statusSteps.indexOf(order.status || "Pending");
+
   return (
     <>
       <Head>
@@ -57,7 +62,8 @@ export default function OrderDetailPage() {
       <div className="max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold mb-6">Order Details</h1>
 
-        <div className="bg-white rounded-lg shadow p-6 space-y-4">
+        <div className="bg-white rounded-lg shadow p-6 space-y-6">
+          {/* Header */}
           <div className="flex justify-between items-center border-b pb-3">
             <div>
               <p className="text-sm text-gray-500">Order ID</p>
@@ -66,10 +72,14 @@ export default function OrderDetailPage() {
             <div className="text-right">
               <p
                 className={`text-sm font-medium ${
-                  order.status === "Pending" ? "text-yellow-600" : "text-green-600"
+                  order.status === "Pending"
+                    ? "text-yellow-600"
+                    : order.status === "Delivered"
+                    ? "text-green-600"
+                    : "text-blue-600"
                 }`}
               >
-                {order.status}
+                {order.status || "Processing"}
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 {order.createdAt?.toDate &&
@@ -78,6 +88,42 @@ export default function OrderDetailPage() {
                     timeStyle: "short",
                   })}
               </p>
+            </div>
+          </div>
+
+          {/* ✅ Tracking Progress Bar */}
+          <div>
+            <h3 className="font-semibold mb-3 text-gray-800">Tracking Progress</h3>
+            <div className="relative flex items-center justify-between mb-6">
+              {statusSteps.map((step, index) => (
+                <div key={index} className="flex flex-col items-center flex-1 text-center">
+                  <div
+                    className={`w-8 h-8 flex items-center justify-center rounded-full border-2 text-sm font-medium transition-all duration-300
+                      ${index <= currentStep
+                        ? "bg-green-500 border-green-500 text-white"
+                        : "border-gray-300 text-gray-400"
+                      }`}
+                  >
+                    {index + 1}
+                  </div>
+                  <p
+                    className={`text-xs mt-2 ${
+                      index <= currentStep ? "text-green-600 font-medium" : "text-gray-400"
+                    }`}
+                  >
+                    {step}
+                  </p>
+                </div>
+              ))}
+              {/* Progress Line */}
+              <div className="absolute top-4 left-4 right-4 h-[2px] bg-gray-200 -z-10">
+                <div
+                  className="h-[2px] bg-green-500 transition-all duration-500"
+                  style={{
+                    width: `${(currentStep / (statusSteps.length - 1)) * 100}%`,
+                  }}
+                />
+              </div>
             </div>
           </div>
 
@@ -107,9 +153,11 @@ export default function OrderDetailPage() {
               {order.customer?.city}, {order.customer?.state} -{" "}
               {order.customer?.pincode}
             </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Phone: {order.customer?.phone}
-            </p>
+            {order.customer?.phone && (
+              <p className="text-sm text-gray-500 mt-1">
+                Phone: {order.customer.phone}
+              </p>
+            )}
           </div>
 
           {/* Total */}
@@ -124,7 +172,7 @@ export default function OrderDetailPage() {
             onClick={() => router.push("/profile")}
             className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-700"
           >
-            Back to Orders
+            ← Back to Orders
           </button>
         </div>
       </div>
