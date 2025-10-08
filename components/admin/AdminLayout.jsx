@@ -3,17 +3,40 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { LayoutDashboard, ShoppingBag, Package, LogOut } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { isAdmin } from "@/lib/admin";
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
-  const { user, logout } = useAuth();
-
-  const isAdmin = user?.email === "mohitkmr8566@gmail.com";
+  const { user, logout, loading } = useAuth();
+  const [verified, setVerified] = useState(false); // ✅ controls render only once
 
   useEffect(() => {
-    if (!isAdmin) router.push("/");
-  }, [isAdmin]);
+    if (loading) return; // wait for auth to finish
+
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    const adminCheck = isAdmin(user);
+    console.log("AdminLayout → Admin check:", user?.email, adminCheck);
+
+    if (adminCheck) {
+      setVerified(true);
+    } else {
+      router.replace("/");
+    }
+  }, [user, loading, router]);
+
+  // show loader while verifying
+  if (loading || !verified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-600 text-lg">
+        Checking admin access...
+      </div>
+    );
+  }
 
   const links = [
     { name: "Dashboard", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
@@ -28,7 +51,6 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="relative min-h-screen bg-gray-50">
-      {/* Sidebar (fixed, independent scroll) */}
       <aside className="fixed top-0 left-0 w-64 h-screen bg-[#111] text-gray-200 flex flex-col border-r border-gray-800 z-40">
         <div className="flex items-center justify-center py-5 border-b border-gray-800">
           <Link href="/" className="text-2xl font-serif font-bold text-white tracking-wide">
@@ -57,10 +79,7 @@ export default function AdminLayout({ children }) {
         </button>
       </aside>
 
-      {/* Main content (scrolls separately) */}
-      <main className="ml-64 p-8 min-h-screen overflow-y-auto">
-        {children}
-      </main>
+      <main className="ml-64 p-8 min-h-screen overflow-y-auto">{children}</main>
     </div>
   );
 }
