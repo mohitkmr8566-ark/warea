@@ -19,8 +19,8 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 import toast from "react-hot-toast";
 import { useRouter } from "next/router";
 import ProductPreviewModal from "@/components/admin/ProductPreviewModal";
+import { isAdmin } from "@/lib/admin";
 
-const ADMIN_EMAIL = "mohitkmr8566@gmail.com";
 
 export default function AdminProductsPage() {
   const { user } = useAuth();
@@ -46,7 +46,7 @@ export default function AdminProductsPage() {
   // 🔐 admin guard + live listener
   useEffect(() => {
     if (!user) return;
-    if (user?.email !== ADMIN_EMAIL) {
+    if (!isAdmin(user)) {
       router.push("/");
       return;
     }
@@ -185,7 +185,7 @@ export default function AdminProductsPage() {
       </div>
     );
   }
-  if (user.email !== ADMIN_EMAIL) {
+  if (!isAdmin(user)) {
     return (
       <div className="page-container py-12 text-center text-red-600">
         Access denied. Admin only.

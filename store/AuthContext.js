@@ -17,20 +17,24 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const auth = getAuth(app);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // ✅ Added loading flag
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        setUser({
+        const userData = {
           email: firebaseUser.email,
           name: firebaseUser.displayName || "Customer",
-        });
-        localStorage.setItem("user", JSON.stringify(firebaseUser));
+        };
+        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
       } else {
         setUser(null);
         localStorage.removeItem("user");
       }
+      setLoading(false); // ✅ done initializing auth
     });
+
     return () => unsubscribe();
   }, [auth]);
 
@@ -86,14 +90,19 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // ✅ Logout
   const logout = async () => {
     await signOut(auth);
     setUser(null);
+    localStorage.removeItem("user");
     toast.success("Logged out successfully");
   };
 
+  // ✅ Provide everything, including `loading`
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, googleLogin }}>
+    <AuthContext.Provider
+      value={{ user, login, logout, signup, googleLogin, loading }}
+    >
       {children}
     </AuthContext.Provider>
   );
