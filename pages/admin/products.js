@@ -19,8 +19,8 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 import toast from "react-hot-toast";
 import { useRouter } from "next/router";
 import ProductPreviewModal from "@/components/admin/ProductPreviewModal";
+import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
 import { isAdmin } from "@/lib/admin";
-
 
 export default function AdminProductsPage() {
   const { user } = useAuth();
@@ -43,7 +43,11 @@ export default function AdminProductsPage() {
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // 🔐 admin guard + live listener
+  // 🧩 Delete modal states
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+
+  // 🔐 Admin guard + live Firestore listener
   useEffect(() => {
     if (!user) return;
     if (!isAdmin(user)) {
@@ -69,7 +73,7 @@ export default function AdminProductsPage() {
     return () => unsub();
   }, [user]);
 
-  // 🖼️ preview local file
+  // 🖼️ Preview image file
   useEffect(() => {
     if (!imageFile) {
       setPreview(form.imageUrl || null);
@@ -114,14 +118,51 @@ export default function AdminProductsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = async (p) => {
-    if (!confirm("Delete this product?")) return;
+  // ⚡ Perform Firestore + Cloudinary deletion (called from modal)
+  const performDeletion = async (product, shouldDeleteImages = true) => {
+    if (!product) return;
+    setDeleteModalOpen(false);
+    const toastId = toast.loading("Deleting product...");
+
     try {
-      await deleteDoc(doc(db, "products", p.id));
-      toast.success("Product deleted");
+      // 🗑️ 1. Delete from Firestore
+      await deleteDoc(doc(db, "products", product.id));
+
+      // ☁️ 2. Delete from Cloudinary (optional)
+      if (shouldDeleteImages) {
+        const publicIds = [];
+        if (Array.isArray(product.images)) {
+          product.images.forEach((it) => {
+            if (it?.public_id) publicIds.push(it.public_id);
+          });
+        } else if (product.image?.public_id) {
+          publicIds.push(product.image.public_id);
+        }
+
+        for (const pid of publicIds) {
+          try {
+            const res = await fetch("/api/cloudinary-delete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ public_id: pid }),
+            });
+            if (!res.ok) {
+              const err = await res.text();
+              console.error("Cloudinary delete failed for", pid, err);
+            }
+          } catch (err) {
+            console.error("Cloudinary delete request failed:", err);
+          }
+        }
+      }
+
+      toast.success("Product deleted ✅");
     } catch (err) {
-      console.error(err);
-      toast.error("Delete failed");
+      console.error("Delete failed:", err);
+      toast.error("Failed to delete product ❌");
+    } finally {
+      toast.dismiss(toastId);
+      setProductToDelete(null);
     }
   };
 
@@ -155,13 +196,13 @@ export default function AdminProductsPage() {
 
       if (form.id) {
         await updateDoc(doc(db, "products", form.id), payload);
-        toast.success("Product updated");
+        toast.success("Product updated ✅");
       } else {
         await addDoc(collection(db, "products"), {
           ...payload,
           createdAt: serverTimestamp(),
         });
-        toast.success("Product created");
+        toast.success("Product created ✅");
       }
 
       resetForm();
@@ -173,25 +214,27 @@ export default function AdminProductsPage() {
     }
   };
 
-  const totals = useMemo(() => ({
-    count: products.length,
-    revenue: products.reduce((s, p) => s + Number(p.price || 0), 0),
-  }), [products]);
+  const totals = useMemo(
+    () => ({
+      count: products.length,
+      revenue: products.reduce((s, p) => s + Number(p.price || 0), 0),
+    }),
+    [products]
+  );
 
-  if (!user) {
+  if (!user)
     return (
       <div className="page-container py-12 text-center">
         Please sign in as admin to view this page.
       </div>
     );
-  }
-  if (!isAdmin(user)) {
+
+  if (!isAdmin(user))
     return (
       <div className="page-container py-12 text-center text-red-600">
         Access denied. Admin only.
       </div>
     );
-  }
 
   return (
     <AdminLayout>
@@ -283,7 +326,7 @@ export default function AdminProductsPage() {
             </div>
           </div>
 
-          {/* 📋 List */}
+          {/* 📋 Product List */}
           <div className="md:col-span-2 space-y-4">
             <div className="bg-white rounded-lg shadow p-4 border border-gray-100">
               <div className="flex justify-between items-center mb-3">
@@ -345,7 +388,8 @@ export default function AdminProductsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(p);
+                              setProductToDelete(p);
+                              setDeleteModalOpen(true);
                             }}
                             className="px-3 py-1 bg-red-50 text-red-600 rounded text-sm border hover:bg-red-100"
                           >
@@ -359,15 +403,13 @@ export default function AdminProductsPage() {
               )}
             </div>
 
-            {/* ℹ️ small help card */}
             <div className="bg-white rounded-lg shadow p-4 text-sm text-gray-600">
               <p>
                 <strong>Cloudinary preset:</strong> uploads use your unsigned preset
                 `unsigned_warea`.
               </p>
               <p className="mt-2">
-                Cloudinary delete integration will be added later (requires
-                server-side secret).
+                Cloudinary delete integration and confirmation modal are active ✅
               </p>
             </div>
           </div>
@@ -378,6 +420,19 @@ export default function AdminProductsPage() {
       <ProductPreviewModal
         product={previewProduct}
         onClose={() => setPreviewProduct(null)}
+      />
+
+      {/* ❌ Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        product={productToDelete}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setProductToDelete(null);
+        }}
+        onConfirm={(deleteImages) =>
+          performDeletion(productToDelete, deleteImages)
+        }
       />
     </AdminLayout>
   );
