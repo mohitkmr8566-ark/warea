@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ✅ PRODUCTS COLLECTION
+    match /products/{productId} {
+      // Anyone can view products
+      allow read: if true;
+      // Only admins can add, edit, or delete products
+      allow write: if isAdmin();
+    }
+
+    // ✅ ORDERS COLLECTION
+    match /orders/{orderId} {
+      // 🟢 Customers: can read only their own orders
+      allow read: if request.auth != null
+                  && request.auth.token.email == resource.data.userId;
+
+      // 🟢 Customers: can create (place) their own order
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.token.email;
+
+      // 🚫 Customers cannot update existing orders
+      allow update, delete: if false;
+
+      // 🟣 Admins: full read/write access to all orders
+      allow read, write: if isAdmin();
+    }
+
+    // ✅ HELPER FUNCTION — identify admin accounts
+    function isAdmin() {
+      return request.auth != null &&
+             request.auth.token.email in [
+               "mohitkmr8566@gmail.com",
+               "warea.admin@gmail.com"
+             ];
+    }
+  }
+}
