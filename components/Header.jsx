@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ShoppingBag, Heart, User, Search, Menu, X } from "lucide-react";
 import { useCart } from "@/store/CartContext";
 import { useWishlist } from "@/store/WishlistContext";
+import { isAdmin } from "@/lib/admin"; // add near top with other imports
 
 export default function Header() {
   const [open, setOpen] = useState(false);
@@ -28,7 +29,8 @@ export default function Header() {
     prevRef.current = cartCount;
   }, [cartCount]);
 
-  const isAdmin = user?.email === "mohitkmr8566@gmail.com";
+  const isAdminUser = isAdmin(user);
+
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b shadow-sm">
