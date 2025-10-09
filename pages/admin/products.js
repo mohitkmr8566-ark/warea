@@ -43,11 +43,11 @@ export default function AdminProductsPage() {
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // 🧩 Delete modal states
+  // Delete modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
 
-  // 🔐 Admin guard + live Firestore listener
+  // 🧠 Real-time Firestore listener for dynamic admin dashboard
   useEffect(() => {
     if (!user) return;
     if (!isAdmin(user)) {
@@ -59,12 +59,24 @@ export default function AdminProductsPage() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const arr = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            // backward-compatible normalization
+            image:
+              data.image || {
+                url: data.image_url || "",
+                public_id: data.image_public_id || "",
+              },
+          };
+        });
         setProducts(arr);
         setLoading(false);
       },
       (err) => {
-        console.error("products listener error:", err);
+        console.error("Firestore listener error:", err);
         toast.error("Failed to load products");
         setLoading(false);
       }
@@ -73,7 +85,7 @@ export default function AdminProductsPage() {
     return () => unsub();
   }, [user]);
 
-  // 🖼️ Preview image file
+  // 🖼️ Preview selected image file
   useEffect(() => {
     if (!imageFile) {
       setPreview(form.imageUrl || null);
@@ -118,41 +130,25 @@ export default function AdminProductsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ⚡ Perform Firestore + Cloudinary deletion (called from modal)
+  // 🔥 Delete product + Cloudinary image
   const performDeletion = async (product, shouldDeleteImages = true) => {
     if (!product) return;
     setDeleteModalOpen(false);
     const toastId = toast.loading("Deleting product...");
 
     try {
-      // 🗑️ 1. Delete from Firestore
       await deleteDoc(doc(db, "products", product.id));
 
-      // ☁️ 2. Delete from Cloudinary (optional)
-      if (shouldDeleteImages) {
-        const publicIds = [];
-        if (Array.isArray(product.images)) {
-          product.images.forEach((it) => {
-            if (it?.public_id) publicIds.push(it.public_id);
+      if (shouldDeleteImages && product.image?.public_id) {
+        try {
+          const res = await fetch("/api/cloudinary-delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ public_id: product.image.public_id }),
           });
-        } else if (product.image?.public_id) {
-          publicIds.push(product.image.public_id);
-        }
-
-        for (const pid of publicIds) {
-          try {
-            const res = await fetch("/api/cloudinary-delete", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ public_id: pid }),
-            });
-            if (!res.ok) {
-              const err = await res.text();
-              console.error("Cloudinary delete failed for", pid, err);
-            }
-          } catch (err) {
-            console.error("Cloudinary delete request failed:", err);
-          }
+          if (!res.ok) console.error("Cloudinary delete failed:", await res.text());
+        } catch (err) {
+          console.error("Delete request failed:", err);
         }
       }
 
@@ -166,6 +162,7 @@ export default function AdminProductsPage() {
     }
   };
 
+  // ⚡ Save or update product
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !form.price) {
@@ -191,6 +188,8 @@ export default function AdminProductsPage() {
         category: form.category || "",
         description: form.description || "",
         image,
+        image_url: image.url,
+        image_public_id: image.public_id,
         updatedAt: serverTimestamp(),
       };
 
@@ -214,6 +213,7 @@ export default function AdminProductsPage() {
     }
   };
 
+  // 🧮 Summary stats
   const totals = useMemo(
     () => ({
       count: products.length,
@@ -409,20 +409,18 @@ export default function AdminProductsPage() {
                 `unsigned_warea`.
               </p>
               <p className="mt-2">
-                Cloudinary delete integration and confirmation modal are active ✅
+                Cloudinary delete integration and Firestore auto-sync active ✅
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 🔍 Product Preview Modal */}
       <ProductPreviewModal
         product={previewProduct}
         onClose={() => setPreviewProduct(null)}
       />
 
-      {/* ❌ Delete Confirmation Modal */}
       <DeleteConfirmModal
         open={deleteModalOpen}
         product={productToDelete}
