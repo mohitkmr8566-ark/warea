@@ -5,7 +5,7 @@ import ProductGrid from "@/components/ProductGrid";
 import NoProducts from "@/components/NoProducts";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import { PRODUCTS } from "@/lib/products"; // ✅ Keep for demo/fallback
+import { PRODUCTS } from "@/lib/products"; // local demo fallback
 
 export default function ShopPage() {
   const router = useRouter();
@@ -16,13 +16,41 @@ export default function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState("");
 
-  // 🔥 Live Firestore Products
+  // 🔥 Live Firestore sync
   useEffect(() => {
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const arr = snap.docs.map((d) => {
+          const data = d.data();
+
+          // 🧠 Normalize image fields for all cases
+          const imageSrc =
+            data.image?.url ||
+            data.image_url ||
+            (Array.isArray(data.images) && data.images[0]) ||
+            data.image ||
+            "/products/placeholder.png";
+
+          return {
+            id: d.id,
+            title: data.title || "Untitled Product",
+            price: Number(data.price) || 0,
+            category: data.category || "",
+            description: data.description || "",
+            material: data.material || "",
+            image: imageSrc,
+            images:
+              data.images ||
+              (data.image_url
+                ? [data.image_url]
+                : data.image
+                ? [data.image.url]
+                : []),
+          };
+        });
+
         setFireProducts(arr);
         setLoading(false);
       },
@@ -34,53 +62,27 @@ export default function ShopPage() {
     return () => unsub();
   }, []);
 
-  // ✅ Combine Firestore + Local Library
+  // ✅ Combine Firestore + Local static fallback
   const allProducts = useMemo(() => {
-    // --- Firestore products (uploaded by Admin) ---
-    const fireMapped = fireProducts.map((p) => {
-      let imageUrl = "/placeholder.png";
+    const localMapped = PRODUCTS.map((p) => ({
+      id: p.id || Math.random().toString(36).slice(2),
+      title: p.title,
+      price: p.price,
+      category: p.category || "",
+      description: p.description || "",
+      material: p.material || "",
+      image:
+        (Array.isArray(p.images) && p.images[0]) ||
+        p.image ||
+        p.imageUrl ||
+        "/products/placeholder.png",
+      images: p.images || [],
+    }));
 
-      if (typeof p.image === "string") imageUrl = p.image;
-      else if (p.image && typeof p.image.url === "string") imageUrl = p.image.url;
-      else if (p.imageUrl) imageUrl = p.imageUrl;
-
-      // Ensure Cloudinary HTTPS URLs remain intact
-      if (imageUrl && !imageUrl.startsWith("http") && !imageUrl.startsWith("/"))
-        imageUrl = `/products/${imageUrl}`;
-
-      return {
-        id: p.id,
-        title: p.title || "Untitled Product",
-        price: Number(p.price) || 0,
-        category: p.category || "",
-        description: p.description || "",
-        image: imageUrl,
-      };
-    });
-
-    // --- Local demo/static products (from /lib/products.js) ---
-    const localMapped = PRODUCTS.map((p) => {
-      let imgPath = p.image || p.imageUrl || "/placeholder.png";
-
-      // ✅ Auto-correct any incorrect or relative paths
-      if (imgPath.startsWith("/images/")) imgPath = imgPath.replace("/images/", "/products/");
-      else if (!imgPath.startsWith("http") && !imgPath.startsWith("/"))
-        imgPath = `/products/${imgPath}`;
-
-      return {
-        id: p.id || Math.random().toString(36).slice(2),
-        title: p.title,
-        price: p.price,
-        category: p.category || "",
-        description: p.description || "",
-        image: imgPath,
-      };
-    });
-
-    return [...fireMapped, ...localMapped];
+    return [...fireProducts, ...localMapped];
   }, [fireProducts]);
 
-  // 🏷️ Categories
+  // 🏷️ Build dynamic category filters
   const categories = useMemo(() => {
     const set = new Set(
       allProducts.map((p) => (p.category || "").toLowerCase()).filter(Boolean)
@@ -96,7 +98,7 @@ export default function ShopPage() {
     );
   }, [allProducts, selectedCategory]);
 
-  // ↕️ Sorting
+  // ↕️ Sort
   const sorted = useMemo(() => {
     const copy = [...filtered];
     if (sort === "low-to-high") copy.sort((a, b) => a.price - b.price);
@@ -152,7 +154,7 @@ export default function ShopPage() {
         </select>
       </div>
 
-      {/* Product Results */}
+      {/* Product Grid */}
       {loading ? (
         <p className="text-center text-gray-500">Loading products...</p>
       ) : sorted.length > 0 ? (
