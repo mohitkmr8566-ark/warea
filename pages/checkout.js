@@ -2,15 +2,21 @@
 
 import { useCart } from "@/store/CartContext";
 import { useAuth } from "@/store/AuthContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  onSnapshot,
+} from "firebase/firestore";
 import toast from "react-hot-toast";
 
 export default function CheckoutPage() {
   const { items = [], clearCart } = useCart();
-  const { user } = useAuth(); // 👈 get current user
+  const { user } = useAuth();
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -21,32 +27,88 @@ export default function CheckoutPage() {
     city: "",
     state: "",
   });
+  const [selectedPayment, setSelectedPayment] = useState("cod");
+  const [addresses, setAddresses] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [error, setError] = useState("");
 
   const subtotal = items.reduce((s, i) => s + i.price * (i.qty || 1), 0);
+
+  // 🏡 Fetch Addresses
+  useEffect(() => {
+    if (!user?.email) return;
+    const q = query(collection(db, "users", user.email, "addresses"));
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setAddresses(data);
+
+      const def = data.find((a) => a.isDefault);
+      if (def) setForm(def);
+    });
+    return () => unsub();
+  }, [user]);
+
+  // 💳 Fetch Payment Methods
+  useEffect(() => {
+    if (!user?.email) return;
+    const q = query(collection(db, "users", user.email, "paymentMethods"));
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setPayments(data);
+      if (data.length > 0) {
+        setSelectedPayment(data[0].id);
+      } else {
+        setSelectedPayment("cod");
+      }
+    });
+    return () => unsub();
+  }, [user]);
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  // ✅ Firestore Order Submission
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+
+    // 🚨 Make sure the user is signed in
+    if (!user?.email) {
+      toast.error("Please sign in before placing an order.");
+      return;
+    }
 
     if (!form.name || !form.phone || !form.address || !form.pincode) {
       setError("Please fill in all required fields.");
       return;
     }
-
     if (items.length === 0) {
       toast.error("Your cart is empty!");
       return;
     }
+    if (!selectedPayment) {
+      toast.error("Please select a payment method.");
+      return;
+    }
+
+    let paymentData = {};
+    if (selectedPayment === "cod") {
+      paymentData = { type: "COD" };
+    } else {
+      const card = payments.find((p) => p.id === selectedPayment);
+      if (card) {
+        paymentData = {
+          type: "SAVED_CARD",
+          methodId: card.id,
+          card: `**** **** **** ${card.cardNumber.slice(-4)}`,
+          name: card.nameOnCard,
+        };
+      }
+    }
 
     try {
       const orderData = {
-        userId: user?.email || "guest",
+        userId: user.email, // ✅ Guaranteed not undefined anymore
         customer: form,
         items: items.map((i) => ({
           id: i.id,
@@ -56,15 +118,14 @@ export default function CheckoutPage() {
         })),
         total: subtotal,
         status: "Pending",
+        payment: paymentData,
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, "orders"), orderData);
-
-      toast.success("Order placed successfully ✅");
+      const ref = await addDoc(collection(db, "orders"), orderData);
+      toast.success("✅ Order placed successfully!");
       clearCart();
-
-      setTimeout(() => router.push("/order-success"), 1500);
+      router.push(`/order-success?id=${ref.id}`);
     } catch (err) {
       console.error("Failed to place order:", err);
       toast.error("Something went wrong. Please try again!");
@@ -76,13 +137,35 @@ export default function CheckoutPage() {
       <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Address Form */}
+        {/* 🏡 Address Form */}
         <form
           onSubmit={handleSubmit}
           className="space-y-6 bg-white shadow-md rounded-lg p-6"
         >
           <h2 className="text-xl font-semibold mb-4">Shipping Address</h2>
           {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          {addresses.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Choose Saved Address
+              </label>
+              <select
+                onChange={(e) => {
+                  const addr = addresses.find((a) => a.id === e.target.value);
+                  if (addr) setForm(addr);
+                }}
+                className="w-full border rounded-md px-3 py-2"
+              >
+                {addresses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} — {a.city}, {a.state}
+                    {a.isDefault && " (Default)"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {["name", "phone", "address", "pincode", "city", "state"].map(
             (field) => (
@@ -93,26 +176,61 @@ export default function CheckoutPage() {
                 {field === "address" ? (
                   <textarea
                     name={field}
-                    value={form[field]}
+                    value={form[field] || ""}
                     onChange={handleChange}
                     rows={3}
                     className="w-full border rounded-md px-3 py-2 mt-1"
-                    placeholder={
-                      field === "address" ? "Street, Locality" : field
-                    }
                   />
                 ) : (
                   <input
                     name={field}
-                    value={form[field]}
+                    value={form[field] || ""}
                     onChange={handleChange}
                     className="w-full border rounded-md px-3 py-2 mt-1"
-                    placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
                   />
                 )}
               </div>
             )
           )}
+
+          {/* 💳 Payment Selector */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Payment Method
+            </label>
+
+            <div className="flex items-center mb-2">
+              <input
+                type="radio"
+                id="cod"
+                name="payment"
+                value="cod"
+                checked={selectedPayment === "cod"}
+                onChange={() => setSelectedPayment("cod")}
+                className="mr-2"
+              />
+              <label htmlFor="cod" className="text-sm">
+                Cash on Delivery (COD)
+              </label>
+            </div>
+
+            {payments.map((p) => (
+              <div key={p.id} className="flex items-center mb-2">
+                <input
+                  type="radio"
+                  id={p.id}
+                  name="payment"
+                  value={p.id}
+                  checked={selectedPayment === p.id}
+                  onChange={() => setSelectedPayment(p.id)}
+                  className="mr-2"
+                />
+                <label htmlFor={p.id} className="text-sm">
+                  **** **** **** {p.cardNumber.slice(-4)} — {p.nameOnCard}
+                </label>
+              </div>
+            ))}
+          </div>
 
           <button
             type="submit"
@@ -122,7 +240,7 @@ export default function CheckoutPage() {
           </button>
         </form>
 
-        {/* Order Summary */}
+        {/* 🧾 Order Summary */}
         <div className="bg-white shadow-md rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
           {items.length ? (
