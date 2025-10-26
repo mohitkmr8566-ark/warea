@@ -11,7 +11,6 @@
     "bulk:append-images": "node scripts/appendExtraImages.js",
     "migrate:products": "node --env-file=.env.local scripts/migrateProductImages.js",
     "cleanup:products": "node --env-file=.env.local scripts/cleanupOldProductFields.js"
-
   },
   "dependencies": {
     "@next/font": "^14.2.15",
@@ -27,6 +26,7 @@
     "lucide-react": "^0.544.0",
     "minimist": "^1.2.8",
     "next": "15.5.4",
+    "razorpay": "^2.9.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hot-toast": "^2.6.0",
