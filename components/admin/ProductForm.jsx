@@ -1,13 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase";
-import {
-  addDoc,
-  updateDoc,
-  collection,
-  doc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { addDoc, updateDoc, collection, doc, serverTimestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
 
 export default function ProductForm({ product, onSaved, onCancel }) {
@@ -20,7 +14,6 @@ export default function ProductForm({ product, onSaved, onCancel }) {
     description: product?.description || "",
   });
 
-  // 🖼 multiple images support
   const [images, setImages] = useState(product?.images || []);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,28 +23,25 @@ export default function ProductForm({ product, onSaved, onCancel }) {
     setForm((s) => ({ ...s, [name]: value }));
   };
 
-  // 📤 Upload new images to Cloudinary
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    if (!files.length) return;
 
     setUploading(true);
+    const toastId = toast.loading("Uploading images...");
     try {
-      const uploadToast = toast.loading("Uploading images...");
       const uploaded = [];
-
       for (const file of files) {
         const res = await uploadToCloudinary(file);
         uploaded.push({ url: res.secure_url, public_id: res.public_id });
       }
-
-      setImages((prev) => [...prev, ...uploaded].slice(0, 5)); // limit 5 images
+      setImages((prev) => [...prev, ...uploaded].slice(0, 5));
       toast.success(`${uploaded.length} image(s) uploaded ✅`);
-      toast.dismiss(uploadToast);
     } catch (err) {
-      console.error("Image upload error:", err);
-      toast.error("Failed to upload images ❌");
+      toast.error("Image upload failed");
+      console.error(err);
     } finally {
+      toast.dismiss(toastId);
       setUploading(false);
     }
   };
@@ -72,6 +62,7 @@ export default function ProductForm({ product, onSaved, onCancel }) {
       const payload = {
         ...form,
         price: Number(form.price),
+        image: images[0]?.url || null, // 👈 primary image for faster rendering
         images,
         updatedAt: serverTimestamp(),
       };
@@ -89,18 +80,15 @@ export default function ProductForm({ product, onSaved, onCancel }) {
 
       onSaved?.();
     } catch (err) {
-      console.error("Save product error:", err);
       toast.error("Failed to save product ❌");
+      console.error(err);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white border rounded-lg shadow p-5 space-y-4"
-    >
+    <form onSubmit={handleSubmit} className="bg-white border rounded-lg shadow p-5 space-y-4">
       <h3 className="font-semibold text-lg mb-2">
         {isEdit ? "Edit Product" : "Add Product"}
       </h3>
@@ -149,9 +137,7 @@ export default function ProductForm({ product, onSaved, onCancel }) {
       </div>
 
       <div>
-        <label className="block text-sm mb-1">
-          Product Images (max 5)
-        </label>
+        <label className="block text-sm mb-1">Product Images (max 5)</label>
         <input
           type="file"
           accept="image/*"
@@ -159,14 +145,10 @@ export default function ProductForm({ product, onSaved, onCancel }) {
           onChange={handleFileChange}
           disabled={uploading}
         />
-
         {images.length > 0 && (
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
             {images.map((img, idx) => (
-              <div
-                key={idx}
-                className="relative group border rounded overflow-hidden"
-              >
+              <div key={idx} className="relative group border rounded overflow-hidden">
                 <img
                   src={img.url}
                   alt={`Image ${idx + 1}`}
@@ -186,11 +168,7 @@ export default function ProductForm({ product, onSaved, onCancel }) {
       </div>
 
       <div className="flex gap-2 justify-end pt-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border rounded hover:bg-gray-100"
-        >
+        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded hover:bg-gray-100">
           Cancel
         </button>
         <button
@@ -198,11 +176,7 @@ export default function ProductForm({ product, onSaved, onCancel }) {
           disabled={saving || uploading}
           className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition"
         >
-          {saving
-            ? "Saving..."
-            : isEdit
-            ? "Save Changes"
-            : "Add Product"}
+          {saving ? "Saving..." : isEdit ? "Save Changes" : "Add Product"}
         </button>
       </div>
     </form>

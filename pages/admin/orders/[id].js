@@ -19,7 +19,6 @@ export default function AdminOrderDetails() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔄 Real-time listener for single order
   useEffect(() => {
     if (!id || !user?.email || !isAdmin(user)) return;
 
@@ -72,24 +71,17 @@ export default function AdminOrderDetails() {
     }
   };
 
-  // 🧾 PDF Invoice Generator
+  // 🧾 Generate PDF Invoice
   const generateInvoice = () => {
     if (!order) return;
 
     const docPDF = new jsPDF("p", "mm", "a4");
     const pageWidth = docPDF.internal.pageSize.getWidth();
 
-    // 🏷️ Logo + Title
-    const logoPath = "/logo.png";
-    const logoWidth = 25;
-    const logoHeight = 25;
-
-    // Try loading the logo from public folder
     const img = new Image();
-    img.src = logoPath;
+    img.src = "/logo.png"; // logo from public folder
     img.onload = () => {
-      docPDF.addImage(img, "PNG", 15, 12, logoWidth, logoHeight);
-
+      docPDF.addImage(img, "PNG", 15, 12, 25, 25);
       docPDF.setFont("helvetica", "bold");
       docPDF.setFontSize(20);
       docPDF.text("WAREA JEWELLERY", 45, 25);
@@ -97,7 +89,6 @@ export default function AdminOrderDetails() {
       docPDF.setTextColor(100);
       docPDF.text("Official Invoice", 45, 32);
 
-      // 🧾 Order info
       docPDF.setTextColor(0);
       docPDF.setFontSize(12);
       docPDF.text(`Invoice #: ${order.id}`, 15, 50);
@@ -111,14 +102,12 @@ export default function AdminOrderDetails() {
         50
       );
 
-      // 👤 Customer details
       docPDF.setFont("helvetica", "bold");
       docPDF.text("Bill To:", 15, 65);
       docPDF.setFont("helvetica", "normal");
       docPDF.text(order.customer?.name || "Customer", 15, 72);
       docPDF.text(order.userId || "", 15, 78);
 
-      // 📦 Order items
       const tableBody = (order.items || []).map((item, i) => [
         i + 1,
         item.name || "Product",
@@ -140,7 +129,6 @@ export default function AdminOrderDetails() {
       docPDF.setFont("helvetica", "bold");
       docPDF.text(`Grand Total: ₹${order.total}`, pageWidth - 70, finalY);
 
-      // 📜 Footer
       docPDF.setFont("helvetica", "italic");
       docPDF.setFontSize(10);
       docPDF.text(
@@ -151,9 +139,8 @@ export default function AdminOrderDetails() {
 
       docPDF.save(`Warea_Invoice_${order.id}.pdf`);
     };
-
     img.onerror = () => {
-      toast.error("Logo could not be loaded. Make sure /public/logo.png exists.");
+      toast.error("Logo could not be loaded. Ensure /public/logo.png exists.");
     };
   };
 
@@ -178,7 +165,6 @@ export default function AdminOrderDetails() {
           <p className="text-gray-500">Order not found.</p>
         ) : (
           <>
-            {/* Header + Status Control */}
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h1 className="text-2xl font-bold">
@@ -201,8 +187,6 @@ export default function AdminOrderDetails() {
                   <option>Out for Delivery</option>
                   <option>Delivered</option>
                 </select>
-
-                {/* 🧾 Download Invoice Button */}
                 <button
                   onClick={generateInvoice}
                   className="bg-blue-600 text-white text-sm px-4 py-2 rounded hover:bg-blue-700 transition"
@@ -220,9 +204,14 @@ export default function AdminOrderDetails() {
                   <div key={i} className="flex justify-between py-2 items-center">
                     <div className="flex items-center gap-3">
                       <img
-                        src={item.image || "/placeholder.jpg"}
+                        src={
+                          item.image ||
+                          item.imageUrl ||
+                          item.images?.[0] ||
+                          "/products/placeholder.png"
+                        }
                         alt={item.name}
-                        className="w-12 h-12 rounded object-cover"
+                        className="w-12 h-12 rounded object-cover bg-gray-100"
                       />
                       <div>
                         <p className="font-medium">{item.name}</p>
@@ -265,9 +254,7 @@ export default function AdminOrderDetails() {
                     ))}
                 </ul>
               ) : (
-                <p className="text-gray-500 italic">
-                  No status changes recorded.
-                </p>
+                <p className="text-gray-500 italic">No status changes recorded.</p>
               )}
             </div>
           </>
