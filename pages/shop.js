@@ -1,110 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+"use client";
+
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import ProductGrid from "@/components/ProductGrid";
-import NoProducts from "@/components/NoProducts";
-import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import { PRODUCTS } from "@/lib/products"; // local demo fallback
 
 export default function ShopPage() {
   const router = useRouter();
   const selectedCategory =
-    typeof router.query.cat === "string" ? router.query.cat.toLowerCase() : "";
+    typeof router.query.cat === "string" ? router.query.cat.toLowerCase() : "all";
 
-  const [fireProducts, setFireProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState("");
 
-  // 🔥 Live Firestore sync
-  useEffect(() => {
-    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const arr = snap.docs.map((d) => {
-          const data = d.data();
-
-          // 🧠 Normalize image fields for all cases
-          const imageSrc =
-            data.image?.url ||
-            data.image_url ||
-            (Array.isArray(data.images) && data.images[0]) ||
-            data.image ||
-            "/products/placeholder.png";
-
-          return {
-            id: d.id,
-            title: data.title || "Untitled Product",
-            price: Number(data.price) || 0,
-            category: data.category || "",
-            description: data.description || "",
-            material: data.material || "",
-            image: imageSrc,
-            images:
-              data.images ||
-              (data.image_url
-                ? [data.image_url]
-                : data.image
-                ? [data.image.url]
-                : []),
-          };
-        });
-
-        setFireProducts(arr);
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Error loading products:", err);
-        setLoading(false);
-      }
-    );
-    return () => unsub();
-  }, []);
-
-  // ✅ Combine Firestore + Local static fallback
-  const allProducts = useMemo(() => {
-    const localMapped = PRODUCTS.map((p) => ({
-      id: p.id || Math.random().toString(36).slice(2),
-      title: p.title,
-      price: p.price,
-      category: p.category || "",
-      description: p.description || "",
-      material: p.material || "",
-      image:
-        (Array.isArray(p.images) && p.images[0]) ||
-        p.image ||
-        p.imageUrl ||
-        "/products/placeholder.png",
-      images: p.images || [],
-    }));
-
-    return [...fireProducts, ...localMapped];
-  }, [fireProducts]);
-
-  // 🏷️ Build dynamic category filters
-  const categories = useMemo(() => {
-    const set = new Set(
-      allProducts.map((p) => (p.category || "").toLowerCase()).filter(Boolean)
-    );
-    return ["all", ...Array.from(set).sort()];
-  }, [allProducts]);
-
-  // 🔍 Filter by category
-  const filtered = useMemo(() => {
-    if (!selectedCategory || selectedCategory === "all") return allProducts;
-    return allProducts.filter(
-      (p) => (p.category || "").toLowerCase() === selectedCategory
-    );
-  }, [allProducts, selectedCategory]);
-
-  // ↕️ Sort
-  const sorted = useMemo(() => {
-    const copy = [...filtered];
-    if (sort === "low-to-high") copy.sort((a, b) => a.price - b.price);
-    if (sort === "high-to-low") copy.sort((a, b) => b.price - a.price);
-    return copy;
-  }, [filtered, sort]);
+  // 🏷️ Static category list for now — you can also generate dynamically
+  const categories = useMemo(
+    () => ["all", "earrings", "bracelets", "necklaces", "giftsets"],
+    []
+  );
 
   const heading =
     selectedCategory && selectedCategory !== "all"
@@ -117,12 +29,10 @@ export default function ShopPage() {
         {heading}
       </h1>
 
-      {/* Category Pills */}
+      {/* 🏷️ Category Pills */}
       <div className="flex gap-3 flex-wrap justify-center mb-6">
         {categories.map((cat) => {
-          const isActive =
-            (!selectedCategory && cat === "all") ||
-            (selectedCategory || "all") === cat;
+          const isActive = selectedCategory === cat;
           const href = cat === "all" ? "/shop" : `/shop?cat=${encodeURIComponent(cat)}`;
           return (
             <Link
@@ -141,7 +51,7 @@ export default function ShopPage() {
         })}
       </div>
 
-      {/* Sort Dropdown */}
+      {/* ↕️ Sort Dropdown */}
       <div className="flex justify-end mb-6">
         <select
           value={sort}
@@ -154,14 +64,8 @@ export default function ShopPage() {
         </select>
       </div>
 
-      {/* Product Grid */}
-      {loading ? (
-        <p className="text-center text-gray-500">Loading products...</p>
-      ) : sorted.length > 0 ? (
-        <ProductGrid products={sorted} />
-      ) : (
-        <NoProducts />
-      )}
+      {/* 🛍️ Product Grid */}
+      <ProductGrid category={selectedCategory} sort={sort} />
     </div>
   );
 }

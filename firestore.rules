@@ -52,23 +52,25 @@ service cloud.firestore {
 
     // ✅ PRODUCTS
     match /products/{productId} {
+      // Public read
       allow read: if true;
+      // Only admin can write
       allow write: if isAdmin();
     }
 
     // ✅ ORDERS
     match /orders/{orderId} {
-      // Customer: read own order
+      // 🟣 Admin: full read/write access comes FIRST
+      allow read, write: if isAdmin();
+
+      // 🟢 Customer: can read only their own orders
       allow read: if isSignedIn() && isOwner(resource.data.userId);
 
-      // Customer: place order (with payment: COD or saved card)
+      // 🟢 Customer: can place orders with valid structure
       allow create: if isValidOrder();
 
-      // No update/delete from frontend
+      // 🚫 No updates or deletes from frontend for normal users
       allow update, delete: if false;
-
-      // Admin: full access
-      allow read, write: if isAdmin();
     }
 
     // ✅ USERS (addresses, payments, notifications)

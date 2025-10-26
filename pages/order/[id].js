@@ -8,11 +8,9 @@ import Head from "next/head";
 export default function OrderDetailPage() {
   const router = useRouter();
   const { id } = router.query;
-
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Realtime Firestore Listener
   useEffect(() => {
     if (!id) return;
 
@@ -36,20 +34,13 @@ export default function OrderDetailPage() {
   }, [id]);
 
   if (loading) {
-    return (
-      <div className="text-center py-20 text-gray-500">Loading order details...</div>
-    );
+    return <div className="text-center py-20 text-gray-500">Loading order details...</div>;
   }
 
   if (!order) {
-    return (
-      <div className="text-center py-20 text-gray-500">
-        Order not found or deleted.
-      </div>
-    );
+    return <div className="text-center py-20 text-gray-500">Order not found or deleted.</div>;
   }
 
-  // ✅ Status tracking stages
   const statusSteps = ["Pending", "Processing", "Shipped", "Out for Delivery", "Delivered"];
   const currentStep = statusSteps.indexOf(order.status || "Pending");
 
@@ -63,22 +54,19 @@ export default function OrderDetailPage() {
         <h1 className="text-3xl font-bold mb-6">Order Details</h1>
 
         <div className="bg-white rounded-lg shadow p-6 space-y-6">
-          {/* Header */}
           <div className="flex justify-between items-center border-b pb-3">
             <div>
               <p className="text-sm text-gray-500">Order ID</p>
               <p className="font-medium">#{order.id.slice(0, 6)}</p>
             </div>
             <div className="text-right">
-              <p
-                className={`text-sm font-medium ${
-                  order.status === "Pending"
-                    ? "text-yellow-600"
-                    : order.status === "Delivered"
-                    ? "text-green-600"
-                    : "text-blue-600"
-                }`}
-              >
+              <p className={`text-sm font-medium ${
+                order.status === "Pending"
+                  ? "text-yellow-600"
+                  : order.status === "Delivered"
+                  ? "text-green-600"
+                  : "text-blue-600"
+              }`}>
                 {order.status || "Processing"}
               </p>
               <p className="text-xs text-gray-500 mt-1">
@@ -91,7 +79,7 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
-          {/* ✅ Tracking Progress Bar */}
+          {/* ✅ Tracking Progress */}
           <div>
             <h3 className="font-semibold mb-3 text-gray-800">Tracking Progress</h3>
             <div className="relative flex items-center justify-between mb-6">
@@ -115,7 +103,6 @@ export default function OrderDetailPage() {
                   </p>
                 </div>
               ))}
-              {/* Progress Line */}
               <div className="absolute top-4 left-4 right-4 h-[2px] bg-gray-200 -z-10">
                 <div
                   className="h-[2px] bg-green-500 transition-all duration-500"
@@ -127,25 +114,27 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
-          {/* Items */}
+          {/* ✅ Items */}
           <div>
             <h3 className="font-semibold mb-2">Items Ordered</h3>
-            <div className="space-y-1 text-sm">
+            <div className="space-y-2 text-sm">
               {order.items?.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between border-b py-1 text-gray-700"
-                >
-                  <span>
-                    {item.name} × {item.qty}
-                  </span>
+                <div key={i} className="flex justify-between items-center border-b py-2">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={item.image || item.imageUrl || item.images?.[0] || "/products/placeholder.png"}
+                      alt={item.name}
+                      className="w-12 h-12 rounded object-cover"
+                    />
+                    <span>{item.name} × {item.qty}</span>
+                  </div>
                   <span>₹{item.price * item.qty}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Shipping Info */}
+          {/* Shipping */}
           <div>
             <h3 className="font-semibold mb-2">Shipping Address</h3>
             <p className="text-gray-700 text-sm leading-relaxed">

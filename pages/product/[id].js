@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { PRODUCTS } from "@/lib/products";
 import { useCart } from "@/store/CartContext";
 import { useWishlist } from "@/store/WishlistContext";
 import {

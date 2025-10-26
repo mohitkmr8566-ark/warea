@@ -3,16 +3,31 @@ import { useCart } from "@/store/CartContext";
 import { Trash2, Plus, Minus } from "lucide-react";
 import toast from "react-hot-toast";
 
+function firstImage(item) {
+  if (Array.isArray(item?.images) && item.images.length) {
+    const v = item.images[0];
+    return typeof v === "string" ? v : v?.url;
+  }
+  return (
+    item?.image?.url ||
+    item?.image ||
+    item?.imageUrl ||
+    item?.imageURL ||
+    item?.image_url ||
+    "/products/placeholder.png"
+  );
+}
+
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, clearCart, subtotal } = useCart();
+  const { items = [], updateQuantity, removeItem, clearCart, subtotal = 0 } = useCart() || {};
 
   const handleRemove = (item) => {
-    removeItem(item.id);
-    toast.error(`${item.title} removed from Cart ❌`);
+    removeItem?.(item.id);
+    toast.error(`${item?.title ?? "Item"} removed from Cart ❌`);
   };
 
   const handleClearCart = () => {
-    clearCart();
+    clearCart?.();
     toast.success("Cart cleared 🛒");
   };
 
@@ -29,76 +44,87 @@ export default function CartPage() {
         </div>
       ) : (
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Items */}
+          {/* Cart Items */}
           <div className="lg:col-span-2 space-y-6">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="flex gap-4 border rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-lg transition-all duration-300 p-4"
-              >
-                {/* Product Image */}
-                <img
-                  src={item.images?.[0]}
-                  alt={item.title}
-                  className="w-28 h-28 object-cover rounded-lg"
-                />
+            {items.map((item) => {
+              const productLink = `/product/${encodeURIComponent(item.slug || item.id)}`;
+              return (
+                <div
+                  key={item.id}
+                  className="flex gap-4 border rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-lg transition-all duration-300 p-4"
+                >
+                  {/* ✅ Clickable image */}
+                  <Link href={productLink} className="shrink-0">
+                    <img
+                      src={firstImage(item)}
+                      alt={item.title || "Product"}
+                      className="w-28 h-28 object-cover rounded-lg bg-gray-100 cursor-pointer hover:opacity-90 transition"
+                      onError={(e) => (e.currentTarget.src = "/products/placeholder.png")}
+                    />
+                  </Link>
 
-                {/* Product Details */}
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-semibold text-base">{item.title}</h3>
-                    <p className="text-sm text-gray-500">{item.material}</p>
-                    <p className="mt-1 font-medium">₹{item.price}</p>
-                  </div>
-
-                  {/* Quantity & Actions */}
-                  <div className="mt-3 flex items-center gap-4">
-                    {/* Quantity Controls */}
-                    <div className="flex items-center border rounded-lg">
-                      <button
-                        className="px-2 py-1 hover:bg-gray-100"
-                        onClick={() => {
-                          updateQuantity(item.id, Math.max(1, (item.qty || 1) - 1));
-                          toast.success(`Quantity updated for ${item.title}`);
-                        }}
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <input
-                        type="number"
-                        min={1}
-                        value={item.qty || 1}
-                        onChange={(e) => {
-                          updateQuantity(
-                            item.id,
-                            Math.max(1, Number(e.target.value) || 1)
-                          );
-                          toast.success(`Quantity updated for ${item.title}`);
-                        }}
-                        className="w-12 text-center border-0 focus:ring-0"
-                      />
-                      <button
-                        className="px-2 py-1 hover:bg-gray-100"
-                        onClick={() => {
-                          updateQuantity(item.id, (item.qty || 1) + 1);
-                          toast.success(`Quantity updated for ${item.title}`);
-                        }}
-                      >
-                        <Plus size={14} />
-                      </button>
+                  {/* ✅ Clickable title */}
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <Link href={productLink}>
+                        <h3 className="font-semibold text-base truncate hover:text-blue-600 transition cursor-pointer">
+                          {item.title || "Product"}
+                        </h3>
+                      </Link>
+                      {(item.material || item.category) && (
+                        <p className="text-sm text-gray-500">
+                          {item.material || item.category}
+                        </p>
+                      )}
+                      <p className="mt-1 font-medium">₹{item.price}</p>
                     </div>
 
-                    {/* Remove Button */}
-                    <button
-                      className="text-red-500 hover:text-red-700 flex items-center gap-1"
-                      onClick={() => handleRemove(item)}
-                    >
-                      <Trash2 size={16} /> <span className="text-sm">Remove</span>
-                    </button>
+                    {/* Quantity Controls */}
+                    <div className="mt-3 flex items-center gap-4">
+                      <div className="flex items-center border rounded-lg">
+                        <button
+                          className="px-2 py-1 hover:bg-gray-100"
+                          onClick={() => {
+                            updateQuantity?.(item.id, Math.max(1, (item.qty || 1) - 1));
+                            toast.success(`Quantity updated for ${item.title || "item"}`);
+                          }}
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          value={item.qty || 1}
+                          onChange={(e) => {
+                            const v = Math.max(1, Number(e.target.value) || 1);
+                            updateQuantity?.(item.id, v);
+                            toast.success(`Quantity updated for ${item.title || "item"}`);
+                          }}
+                          className="w-12 text-center border-0 focus:ring-0"
+                        />
+                        <button
+                          className="px-2 py-1 hover:bg-gray-100"
+                          onClick={() => {
+                            updateQuantity?.(item.id, (item.qty || 1) + 1);
+                            toast.success(`Quantity updated for ${item.title || "item"}`);
+                          }}
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+
+                      <button
+                        className="text-red-500 hover:text-red-700 flex items-center gap-1"
+                        onClick={() => handleRemove(item)}
+                      >
+                        <Trash2 size={16} />
+                        <span className="text-sm">Remove</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Summary */}
@@ -106,23 +132,17 @@ export default function CartPage() {
             <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
             <div className="flex justify-between py-2 border-b">
               <span>Subtotal</span>
-              <span className="font-medium">₹{subtotal.toLocaleString()}</span>
+              <span className="font-medium">₹{Number(subtotal || 0).toLocaleString()}</span>
             </div>
             <p className="text-sm text-gray-500 mt-2">
-              Taxes & shipping calculated at checkout.
+              Taxes &amp; shipping calculated at checkout.
             </p>
 
             <div className="mt-6 flex flex-col gap-3">
-              <Link
-                href="/checkout"
-                className="btn btn-primary w-full text-center"
-              >
+              <Link href="/checkout" className="btn btn-primary w-full text-center">
                 Proceed to Checkout
               </Link>
-              <button
-                className="btn btn-ghost w-full"
-                onClick={handleClearCart}
-              >
+              <button className="btn btn-ghost w-full" onClick={handleClearCart}>
                 Clear Cart
               </button>
               <Link href="/shop" className="btn btn-ghost w-full text-center">
