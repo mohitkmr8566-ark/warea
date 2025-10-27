@@ -1,4 +1,6 @@
 // components/Header.jsx
+"use client";
+
 import { useAuth } from "@/store/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -10,9 +12,14 @@ import { isAdmin } from "@/lib/admin";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+
   const { items: cartItems = [] } = useCart() || {};
   const { wishlist = [] } = useWishlist() || {};
-  const { user } = useAuth();
+
+  // ✅ Safe destructuring
+  const auth = useAuth();
+  const user = auth?.user || null;
+  const loading = auth?.loading ?? false;
 
   const cartCount = cartItems.reduce((s, i) => s + (i.qty || 1), 0);
   const wishCount = wishlist.length;
@@ -29,6 +36,25 @@ export default function Header() {
     }
     prevRef.current = cartCount;
   }, [cartCount]);
+
+  // 🧊 Optional shimmer while auth loads
+  if (loading) {
+    return (
+      <header className="sticky top-0 z-40 bg-white border-b shadow-sm">
+        <div className="page-container flex items-center justify-between py-3 animate-pulse">
+          <div className="flex items-center gap-2">
+            <div className="bg-gray-300 rounded-full w-10 h-10"></div>
+            <div className="bg-gray-300 h-6 w-24 rounded"></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="bg-gray-300 rounded-full w-8 h-8"></div>
+            <div className="bg-gray-300 rounded-full w-8 h-8"></div>
+            <div className="bg-gray-300 rounded-full w-8 h-8"></div>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b shadow-sm">

@@ -7,7 +7,6 @@ import { db } from "@/lib/firebase";
 import {
   collection,
   query,
-  orderBy,
   onSnapshot,
   addDoc,
   serverTimestamp,
@@ -32,10 +31,15 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState({
     id: null,
     title: "",
+    mrp: "",
     price: "",
+    discountPercent: 0,
     category: "",
     description: "",
     images: [],
+    isActive: true,
+    isFeatured: false,
+    stock: "",
   });
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -46,7 +50,7 @@ export default function AdminProductsPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
 
-  // 🧠 Firestore listener
+  // 🧠 Firestore listener — no orderBy in query; sort client-side by createdAt (desc)
   useEffect(() => {
     if (!user) return;
     if (!isAdmin(user)) {
@@ -54,11 +58,11 @@ export default function AdminProductsPage() {
       return;
     }
 
-    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "products"));
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const arr = snap.docs.map((d) => {
+        let arr = snap.docs.map((d) => {
           const data = d.data();
           const normalized =
             data.images && Array.isArray(data.images)
@@ -68,8 +72,16 @@ export default function AdminProductsPage() {
               : data.image_url
               ? [{ url: data.image_url, public_id: data.image_public_id }]
               : [];
-          return { id: d.id, ...data, images: normalized };
+        return { id: d.id, ...data, images: normalized };
         });
+
+        // sort by createdAt desc safely (fallback to 0)
+        arr.sort((a, b) => {
+          const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return tb - ta;
+        });
+
         setProducts(arr);
         setLoading(false);
       },
@@ -99,10 +111,15 @@ export default function AdminProductsPage() {
     setForm({
       id: null,
       title: "",
+      mrp: "",
       price: "",
+      discountPercent: 0,
       category: "",
       description: "",
       images: [],
+      isActive: true,
+      isFeatured: false,
+      stock: "",
     });
     setImageFiles([]);
     setPreviews([]);
@@ -125,10 +142,15 @@ export default function AdminProductsPage() {
     setForm({
       id: p.id,
       title: p.title || "",
+      mrp: p.mrp || "",
       price: p.price || "",
+      discountPercent: p.discountPercent || 0,
       category: p.category || "",
       description: p.description || "",
       images: p.images || [],
+      isActive: p.isActive ?? true,
+      isFeatured: p.isFeatured ?? false,
+      stock: p.stock || "",
     });
     setImageFiles([]);
     setPreviews([]);
@@ -174,7 +196,7 @@ export default function AdminProductsPage() {
   const uploadWithProgressUnsigned = (file, index) => {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-    const folder = "warea/products"; // ✅ Fixed folder path
+    const folder = "warea/products";
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -205,7 +227,7 @@ export default function AdminProductsPage() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", preset);
-      formData.append("folder", folder); // ✅ enforce folder
+      formData.append("folder", folder);
       xhr.send(formData);
     });
   };
@@ -213,8 +235,8 @@ export default function AdminProductsPage() {
   // ⚙️ Save / Update Product
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.price) {
-      toast.error("Title and price are required");
+    if (!form.title || !form.price || !form.mrp) {
+      toast.error("Title, MRP and Selling Price are required");
       return;
     }
 
@@ -248,14 +270,25 @@ export default function AdminProductsPage() {
           ? uploadedImages
           : form.images || [];
 
+      // 🧮 Calculate discount %
+      const mrpNum = Number(form.mrp);
+      const priceNum = Number(form.price);
+      const discountPercent = mrpNum > 0 ? Math.round(((mrpNum - priceNum) / mrpNum) * 100) : 0;
+
       const payload = {
         title: form.title,
-        price: Number(form.price),
+        mrp: mrpNum,
+        price: priceNum,
+        discountPercent,
         category: form.category || "",
         description: form.description || "",
         images: finalImages,
+        isActive: form.isActive,
+        isFeatured: form.isFeatured,
+        stock: Number(form.stock) || null,
         updatedAt: serverTimestamp(),
-        image_url: null, // 🧹 Clear legacy fields
+        // 🧹 legacy cleanup
+        image_url: null,
         image: null,
       };
 
@@ -321,23 +354,43 @@ export default function AdminProductsPage() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <label className="block text-sm">Title</label>
               <input
-                className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-black/10"
+                className="w-full border px-3 py-2 rounded"
                 value={form.title}
                 onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))}
               />
 
-              <label className="block text-sm">Price (INR)</label>
+              <label className="block text-sm">MRP (INR)</label>
               <input
                 type="number"
                 min="0"
-                className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-black/10"
-                value={form.price}
-                onChange={(e) => setForm((s) => ({ ...s, price: e.target.value }))}
+                className="w-full border px-3 py-2 rounded"
+                value={form.mrp}
+                onChange={(e) => setForm((s) => ({ ...s, mrp: e.target.value }))}
               />
+
+              <label className="block text-sm">Selling Price (INR)</label>
+              <input
+                type="number"
+                min="0"
+                className="w-full border px-3 py-2 rounded"
+                value={form.price}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, price: e.target.value }))
+                }
+              />
+
+              {form.mrp && form.price && (
+                <p className="text-sm text-gray-600">
+                  Discount:{" "}
+                  <span className="font-semibold">
+                    {Math.round(((Number(form.mrp) - Number(form.price)) / Number(form.mrp)) * 100)}%
+                  </span>
+                </p>
+              )}
 
               <label className="block text-sm">Category</label>
               <input
-                className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-black/10"
+                className="w-full border px-3 py-2 rounded"
                 value={form.category}
                 onChange={(e) =>
                   setForm((s) => ({ ...s, category: e.target.value }))
@@ -346,7 +399,7 @@ export default function AdminProductsPage() {
 
               <label className="block text-sm">Description</label>
               <textarea
-                className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-black/10"
+                className="w-full border px-3 py-2 rounded"
                 rows={4}
                 value={form.description}
                 onChange={(e) =>
@@ -354,7 +407,39 @@ export default function AdminProductsPage() {
                 }
               />
 
-              {/* 🧩 Drag & Drop Upload Zone */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.isFeatured}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, isFeatured: e.target.checked }))
+                    }
+                  />
+                  Featured
+                </label>
+                <label className="text-sm flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.isActive}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, isActive: e.target.checked }))
+                    }
+                  />
+                  Active
+                </label>
+              </div>
+
+              <label className="block text-sm">Stock (optional)</label>
+              <input
+                type="number"
+                min="0"
+                className="w-full border px-3 py-2 rounded"
+                value={form.stock}
+                onChange={(e) => setForm((s) => ({ ...s, stock: e.target.value }))}
+              />
+
+              {/* 🧩 Image Upload */}
               <label className="block text-sm font-medium mb-1">
                 Product Images
               </label>
@@ -400,7 +485,6 @@ export default function AdminProductsPage() {
                 </label>
               </div>
 
-              {/* 🖼️ Previews + Per-file Progress */}
               {previews.length > 0 && (
                 <div className="flex flex-wrap gap-3 mt-4">
                   {previews.map((src, i) => (
@@ -420,7 +504,7 @@ export default function AdminProductsPage() {
                       {progresses[i] > 0 && progresses[i] < 100 && (
                         <div className="absolute bottom-0 left-0 w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
-                            className="bg-yellow-500 h-full transition-all duration-300"
+                            className="h-full transition-all duration-300 bg-yellow-500"
                             style={{ width: `${progresses[i]}%` }}
                           />
                         </div>
@@ -491,11 +575,31 @@ export default function AdminProductsPage() {
                           <div className="text-xs text-gray-500">
                             {p.category}
                           </div>
+                          {!p.isActive && (
+                            <span className="text-xs text-red-500 font-medium">
+                              Inactive
+                            </span>
+                          )}
+                          {p.isFeatured && (
+                            <span className="text-xs text-yellow-600 font-medium ml-2">
+                              ⭐ Featured
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <div className="font-semibold">₹{p.price}</div>
+                        <div className="font-semibold text-gray-800">
+                          ₹{p.price}{" "}
+                          <span className="line-through text-gray-400 ml-1 text-sm">
+                            ₹{p.mrp}
+                          </span>
+                          {p.discountPercent > 0 && (
+                            <span className="text-green-600 text-xs ml-1">
+                              ({p.discountPercent}% off)
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500 truncate w-52">
                           {p.description}
                         </div>
