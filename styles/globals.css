@@ -2,23 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Put applies inside a layer so Tailwind knows where to resolve them */
+/* ========== BASE STYLES ========== */
 @layer base {
   html, body {
-    @apply bg-white text-gray-900 font-sans antialiased;
+    @apply bg-white text-gray-900 font-sans antialiased overflow-x-hidden;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 }
 
-/* A reusable page container */
+/* ========== PAGE LAYOUT ========== */
 .page-container {
   @apply max-w-7xl mx-auto px-6;
 }
 
-/* Avoid tiny inline gaps from images */
-img { display: block; }
+/* ========== GLOBAL ELEMENTS ========== */
+img {
+  display: block;
+}
 
-/* cart bump animation */
-.cart-bump { animation: bump 360ms ease-out; }
+a, button {
+  @apply transition duration-200 ease-in-out;
+}
+
+h1, h2, h3, h4 {
+  @apply font-serif font-bold;
+}
+
+h2, h3 {
+  @apply tracking-wide;
+}
+
+/* ========== CART BUMP ANIMATION ========== */
+.cart-bump {
+  animation: bump 360ms ease-out;
+}
 @keyframes bump {
   0% { transform: scale(1); }
   30% { transform: scale(1.12); }
@@ -26,11 +46,16 @@ img { display: block; }
   100% { transform: scale(1); }
 }
 
+/* ========== FADE IN ANIMATION ========== */
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
-
 .animate-fadeIn {
   animation: fadeIn 0.25s ease-out;
+}
+
+/* Optional subtle shadow for cards & banners */
+.shadow-soft {
+  box-shadow: 0 8px 20px -4px rgba(0,0,0,0.08);
 }

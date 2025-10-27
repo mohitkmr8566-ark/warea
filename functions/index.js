@@ -3,7 +3,8 @@
  */
 const { setGlobalOptions } = require("firebase-functions/v2/options");
 const { onRequest } = require("firebase-functions/v2/https");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 
@@ -18,8 +19,7 @@ setGlobalOptions({ maxInstances: 10 });
 
 /**
  * ✅ Hello World (Testing Endpoint)
- * You can test it at:
- * http://127.0.0.1:5001/{your-project-id}/asia-south1/helloWorld
+ * Test at: http://127.0.0.1:5001/{your-project-id}/asia-south1/helloWorld
  */
 exports.helloWorld = onRequest((req, res) => {
   logger.info("Hello logs!", { structuredData: true });
@@ -73,4 +73,78 @@ exports.onNewOrderCreate = onDocumentCreated("orders/{orderId}", async (event) =
   }
 
   return null;
+});
+
+/**
+ * 🪄 Trigger — Auto Sync Discount % on Product Edit
+ * Runs whenever a product document is created or updated
+ */
+exports.syncDiscountOnProductWrite = onDocumentWritten("products/{productId}", async (event) => {
+  const after = event.data?.after?.data();
+  const before = event.data?.before?.data();
+  const productId = event.params.productId;
+
+  if (!after) return null;
+
+  const { mrp, price } = after;
+  if (!mrp || !price || isNaN(mrp) || isNaN(price) || mrp <= 0) return null;
+
+  const newDiscount = Math.max(0, Math.round(((mrp - price) / mrp) * 100));
+  const oldDiscount = before?.discountPercent || 0;
+
+  if (newDiscount !== oldDiscount) {
+    await db.collection("products").doc(productId).update({
+      discountPercent: newDiscount,
+    });
+    logger.info(
+      `🔁 Discount auto-sync for ${productId}: ${oldDiscount}% → ${newDiscount}%`
+    );
+  }
+
+  return null;
+});
+
+/**
+ * 🪄 Daily cleanup — auto deactivate expired hero slides
+ */
+exports.cleanUpHeroBanners = onSchedule("every 24 hours", async () => {
+  logger.info("⏳ Running daily hero banner cleanup (deactivate expired)");
+  const now = new Date();
+  const snap = await db.collection("heroSlides").get();
+  let updated = 0;
+
+  for (const docSnap of snap.docs) {
+    const data = docSnap.data();
+    if (data.endDate && !data.isDraft && now > new Date(data.endDate) && data.isActive) {
+      await docSnap.ref.update({ isActive: false });
+      updated++;
+    }
+  }
+
+  logger.info(`✅ Deactivated ${updated} expired hero banners.`);
+});
+
+/**
+ * 🪄 Daily activation — auto activate future hero slides
+ */
+exports.activateHeroBanners = onSchedule("every 24 hours", async () => {
+  logger.info("⏳ Running daily hero banner activation (startDate check)");
+  const now = new Date();
+  const snap = await db.collection("heroSlides").get();
+  let activated = 0;
+
+  for (const docSnap of snap.docs) {
+    const data = docSnap.data();
+    if (
+      data.startDate &&
+      !data.isDraft &&
+      new Date(data.startDate) <= now &&
+      !data.isActive
+    ) {
+      await docSnap.ref.update({ isActive: true });
+      activated++;
+    }
+  }
+
+  logger.info(`✅ Activated ${activated} hero banners scheduled for now.`);
 });
