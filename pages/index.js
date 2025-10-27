@@ -12,24 +12,30 @@ export default function HomePage() {
       <Hero />
 
       {/* 🛍️ Category Section */}
-      <div className="page-container">
-        <CategorySection />
+      <section className="py-10 sm:py-14 border-t border-gray-100 animate-fadeIn">
+        <div className="page-container">
+          <CategorySection />
+        </div>
+      </section>
 
-        {/* ✨ Featured Products Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center"
-        >
-          <h2 className="text-3xl font-bold text-center mt-10 mb-6 tracking-tight">
-            Featured Products
-          </h2>
-        </motion.div>
+      {/* ✨ Featured Products Section */}
+      <section className="py-10 sm:py-14 border-t border-gray-100 animate-fadeIn">
+        <div className="page-container">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center"
+          >
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold tracking-wide text-center mb-8">
+              Featured Products
+            </h2>
+          </motion.div>
 
-        <ProductGrid />
-      </div>
+          <ProductGrid />
+        </div>
+      </section>
     </>
   );
 }

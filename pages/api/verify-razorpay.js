@@ -13,12 +13,12 @@ export default async function handler(req, res) {
       orderPayload, // { items, total, address, user }
     } = req.body || {};
 
-    // Basic checks
+    // 🛡️ 1. Validate fields
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
       return res.status(400).json({ error: "Missing Razorpay fields" });
     }
 
-    // Verify HMAC signature using SECRET (server-only)
+    // 🔐 2. Verify signature with SECRET key
     const expected = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -28,13 +28,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid signature" });
     }
 
-    // Normalize payload → match your project’s order schema
+    // 📦 3. Normalize and prepare order data
     const { items = [], total = 0, address = null, user = {} } = orderPayload || {};
     const userEmail = user?.email || null;
 
     const orderDoc = {
       userId: userEmail,
-      customer: address,                 // ← your COD flow uses "customer", so keep same key
+      customer: address,
       items,
       total,
       status: "Paid",
@@ -44,13 +44,17 @@ export default async function handler(req, res) {
         orderId: razorpay_order_id,
       },
       gateway: "razorpay",
-      createdAt: adminDb.FieldValue ? adminDb.FieldValue.serverTimestamp() : new Date(), // fallback
+      statusTimestamps: {
+        Paid: adminDb.FieldValue.serverTimestamp(),
+      },
+      createdAt: adminDb.FieldValue.serverTimestamp(),
     };
 
-    // Write with Admin SDK (bypasses Firestore rules)
-    await adminDb.collection("orders").add(orderDoc);
+    // 📝 4. Save order to Firestore (Admin SDK)
+    const docRef = await adminDb.collection("orders").add(orderDoc);
 
-    return res.status(200).json({ ok: true });
+    // 🟢 5. Return success + orderId (for redirect on frontend)
+    return res.status(200).json({ ok: true, orderId: docRef.id });
   } catch (err) {
     console.error("Verify/save error:", err);
     return res.status(500).json({ error: "Server error verifying payment" });

@@ -58,18 +58,26 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ✅ HERO SLIDES
+    // NOTE: We fetch all slides then filter on the client.
+    // So reads must be allowed for every document in the collection.
+    match /heroSlides/{slideId} {
+      allow read: if true;        // public read (required for client-side filtering)
+      allow write: if isAdmin();  // only admin can create/update/delete
+    }
+
     // ✅ ORDERS
     match /orders/{orderId} {
-      // 🟣 Admin: full read/write access comes FIRST
+      // Admin: full read/write
       allow read, write: if isAdmin();
 
-      // 🟢 Customer: can read only their own orders
+      // Customer: can read only their own orders
       allow read: if isSignedIn() && isOwner(resource.data.userId);
 
-      // 🟢 Customer: can place orders with valid structure
+      // Customer: can place orders with valid structure
       allow create: if isValidOrder();
 
-      // 🚫 No updates or deletes from frontend for normal users
+      // No updates/deletes from frontend for normal users
       allow update, delete: if false;
     }
 
