@@ -1,5 +1,6 @@
 // pages/_app.js
 import "@/styles/globals.css";
+import "react-loading-skeleton/dist/skeleton.css"; // 🆕 Skeleton Loader Styles
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";

@@ -1,8 +1,9 @@
+// pages/checkout.js
 "use client";
 
 import { useCart } from "@/store/CartContext";
 import { useAuth } from "@/store/AuthContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/router";
 import { db } from "@/lib/firebase";
 import {
@@ -15,6 +16,7 @@ import {
 import toast from "react-hot-toast";
 import Script from "next/script";
 import { motion } from "framer-motion";
+import { zoneFromPincode, etaRange } from "@/lib/logistics"; // 🆕 ETA utility import
 
 export default function CheckoutPage() {
   const { items = [], clearCart } = useCart();
@@ -34,16 +36,24 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const subtotal = items.reduce((s, i) => s + i.price * (i.qty || 1), 0);
+  const subtotal = useMemo(
+    () =>
+      Number(
+        items.reduce(
+          (s, i) => s + Number(i.price || 0) * Number(i.qty || 1),
+          0
+        )
+      ) || 0,
+    [items]
+  );
 
-  // 🏡 Fetch saved addresses
   useEffect(() => {
     if (!user?.email) return;
     const q = query(collection(db, "users", user.email, "addresses"));
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setAddresses(data);
-      const def = data.find((a) => a.isDefault);
+      const def = data.find((a) => a.isDefault) || data[0];
       if (def) setForm(def);
     });
     return () => unsub();
@@ -53,7 +63,24 @@ export default function CheckoutPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  // 💳 Razorpay payment flow
+  function normalizeCartItem(i) {
+    const qty = Math.max(1, Number(i.qty || 1));
+    const firstArrayUrl =
+      (Array.isArray(i.images) &&
+        i.images[0] &&
+        (i.images[0].url || i.images[0])) ||
+      "";
+    const image = i.image || i.imageUrl || firstArrayUrl || "";
+
+    return {
+      id: i.id,
+      name: i.title || i.name || "Product",
+      price: Number(i.price || 0),
+      qty,
+      image,
+    };
+  }
+
   async function handleRazorpayPayment(orderPayload) {
     try {
       const res = await fetch("/api/razorpay", {
@@ -89,7 +116,10 @@ export default function CheckoutPage() {
                 razorpay_payment_id: resp.razorpay_payment_id,
                 razorpay_order_id: resp.razorpay_order_id,
                 razorpay_signature: resp.razorpay_signature,
-                orderPayload,
+                orderPayload: {
+                  ...orderPayload,
+                  address: orderPayload.customer, // 🆕 ensures backend always gets pincode properly
+                },
               }),
             });
 
@@ -100,7 +130,9 @@ export default function CheckoutPage() {
               const oid = out.orderId || out.id || "";
               router.push(oid ? `/order-success?id=${oid}` : "/order-success");
             } else {
-              toast.error("Verification failed. If the amount was captured, it will be refunded.");
+              toast.error(
+                "Verification failed. If the amount was captured, it will be refunded."
+              );
             }
           } catch (err) {
             console.error(err);
@@ -129,7 +161,14 @@ export default function CheckoutPage() {
         toast.error("Please sign in before placing an order.");
         return;
       }
-      if (!form.name || !form.phone || !form.address || !form.pincode || !form.city || !form.state) {
+      if (
+        !form.name ||
+        !form.phone ||
+        !form.address ||
+        !form.pincode ||
+        !form.city ||
+        !form.state
+      ) {
         setError("Please fill in all required fields.");
         return;
       }
@@ -138,30 +177,44 @@ export default function CheckoutPage() {
         return;
       }
 
-      // 🧾 Order Payload (updated)
+      const itemsWithImage = items.map(normalizeCartItem);
+
       const orderPayload = {
-        items: items.map((i) => ({
-          id: i.id,
-          name: i.title || i.name,
-          price: i.price,
-          qty: i.qty || 1,
-          image: i.image || i.imageUrl || i.images?.[0],
-        })),
-        total: subtotal,
-        customer: form,
         userId: user.email,
+        customer: {
+          name: form.name,
+          phone: form.phone,
+          address: form.address,
+          pincode: form.pincode,
+          city: form.city,
+          state: form.state,
+        },
+        items: itemsWithImage,
+        total: subtotal,
         status: "Pending",
-        statusTimestamps: {
-          Pending: serverTimestamp(),
-        },
-        payment: {
-          type: selectedPayment === "cod" ? "COD" : "Razorpay",
-        },
+        statusTimestamps: { Pending: serverTimestamp() },
+        paymentMode: selectedPayment === "cod" ? "COD" : "Razorpay",
+        payment: { type: selectedPayment === "cod" ? "COD" : "Razorpay" },
         createdAt: serverTimestamp(),
       };
 
       if (selectedPayment === "cod") {
-        const ref = await addDoc(collection(db, "orders"), orderPayload);
+        // 🆕 ETA & zone calculation
+        const zone = zoneFromPincode(form.pincode);
+        const eta = etaRange(zone);
+
+        const finalPayload = {
+          ...orderPayload,
+          logistics: {
+            zone,
+            eta: {
+              start: eta.start,
+              end: eta.end,
+            },
+          },
+        };
+
+        const ref = await addDoc(collection(db, "orders"), finalPayload);
         toast.success("✅ Order placed successfully!");
         clearCart();
         router.push(`/order-success?id=${ref.id}`);
@@ -178,10 +231,8 @@ export default function CheckoutPage() {
 
   return (
     <>
-      {/* Razorpay Script */}
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
 
-      {/* ✨ Header */}
       <section className="bg-gradient-to-b from-gray-50 to-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-12 text-center">
           <motion.h1
@@ -198,9 +249,7 @@ export default function CheckoutPage() {
         </div>
       </section>
 
-      {/* 🧾 Main Section */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* 📦 Shipping Form */}
         <form
           onSubmit={handleSubmit}
           className="space-y-6 bg-white border rounded-3xl shadow-md p-6 hover:shadow-xl transition"
@@ -217,6 +266,11 @@ export default function CheckoutPage() {
                   if (addr) setForm(addr);
                 }}
                 className="w-full border rounded-md px-3 py-2"
+                value={
+                  addresses.find(
+                    (a) => a.name === form.name && a.address === form.address
+                  )?.id || ""
+                }
               >
                 {addresses.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -250,14 +304,15 @@ export default function CheckoutPage() {
             </div>
           ))}
 
-          {/* 💳 Payment Method */}
           <div>
             <label className="block text-sm font-medium mb-2">Payment Method</label>
 
             <div
               onClick={() => setSelectedPayment("cod")}
               className={`border rounded-lg p-3 mb-2 flex items-center justify-between cursor-pointer transition ${
-                selectedPayment === "cod" ? "border-yellow-400 bg-yellow-50" : "hover:bg-gray-50"
+                selectedPayment === "cod"
+                  ? "border-yellow-400 bg-yellow-50"
+                  : "hover:bg-gray-50"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -274,7 +329,9 @@ export default function CheckoutPage() {
             <div
               onClick={() => setSelectedPayment("razorpay")}
               className={`border rounded-lg p-3 flex items-center justify-between cursor-pointer transition ${
-                selectedPayment === "razorpay" ? "border-yellow-400 bg-yellow-50" : "hover:bg-gray-50"
+                selectedPayment === "razorpay"
+                  ? "border-yellow-400 bg-yellow-50"
+                  : "hover:bg-gray-50"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -302,7 +359,6 @@ export default function CheckoutPage() {
           </button>
         </form>
 
-        {/* 🧾 Order Summary */}
         <div className="bg-white border rounded-3xl shadow-md p-6 h-fit hover:shadow-xl transition">
           <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
           {items.length ? (
@@ -312,7 +368,9 @@ export default function CheckoutPage() {
                   <span>
                     {p.title || p.name} × {p.qty || 1}
                   </span>
-                  <span>₹{(p.price * (p.qty || 1)).toLocaleString("en-IN")}</span>
+                  <span>
+                    ₹{(Number(p.price || 0) * Number(p.qty || 1)).toLocaleString("en-IN")}
+                  </span>
                 </div>
               ))}
               <div className="border-t pt-4 flex justify-between font-semibold text-lg">
