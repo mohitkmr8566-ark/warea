@@ -3,7 +3,7 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import ProductGrid from "@/components/ProductGrid";
 import { motion } from "framer-motion";
@@ -18,7 +18,7 @@ export default function ShopPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const categories = useMemo(
-    () => ["all", "earrings", "bracelets", "necklaces", "giftsets"],
+    () => ["all", "earrings", "bracelets", "necklaces", "rings", "giftsets"],
     []
   );
 
@@ -27,6 +27,10 @@ export default function ShopPage() {
       ? `${selectedCategory[0].toUpperCase()}${selectedCategory.slice(1)} Collection`
       : "Shop All Products";
 
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+
   const pageTitle =
     selectedCategory && selectedCategory !== "all"
       ? `${heading} | Warea Jewellery`
@@ -34,32 +38,122 @@ export default function ShopPage() {
 
   const pageDesc = `Discover exquisite ${
     selectedCategory === "all" ? "" : selectedCategory
-  } jewellery at Warea. Explore premium anti-tarnish collections at affordable prices.`;
+  } jewellery at Warea. Explore premium handcrafted anti-tarnish collections at affordable prices.`;
 
   const handlePriceChange = (e) => {
     const [min, max] = e.target.value.split("-").map(Number);
     setPriceRange([min, max]);
   };
 
+  /* -------------------- SEO STRUCTURED DATA -------------------- */
+  const [itemListJson, setItemListJson] = useState("");
+
+  useEffect(() => {
+    const mockProducts = [
+      { id: "1", title: "Elegant Gold-Plated Necklace" },
+      { id: "2", title: "Silver Drop Earrings" },
+      { id: "3", title: "Pearl Bracelet Gift Set" },
+      { id: "4", title: "Classic Pendant Chain" },
+      { id: "5", title: "Rose Gold Stud Earrings" },
+    ];
+
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: heading,
+      itemListOrder: "https://schema.org/ItemListOrderAscending",
+      numberOfItems: mockProducts.length,
+      itemListElement: mockProducts.map((p, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: `${baseUrl}/product/${p.id}`,
+        name: p.title,
+      })),
+    };
+
+    setItemListJson(JSON.stringify(schema));
+  }, [selectedCategory, heading, baseUrl]);
+
+  /* -------------------- RENDER -------------------- */
   return (
     <>
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
+        <meta name="keywords" content="warea, jewellery, earrings, necklaces, bracelets, gold jewellery, silver jewellery, buy online, handmade jewellery" />
+        <link
+          rel="canonical"
+          href={`${baseUrl}/shop${selectedCategory !== "all" ? `?cat=${selectedCategory}` : ""}`}
+        />
+
+        {/* ✅ Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`${baseUrl}/shop`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
+        <meta property="og:image" content={`${baseUrl}/logo.png`} />
+
+        {/* ✅ Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDesc} />
+        <meta name="twitter:image" content={`${baseUrl}/logo.png`} />
+
+        {/* ✅ Schema.org JSON-LD — CollectionPage */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "CollectionPage",
-              name: pageTitle,
+              name: heading,
               description: pageDesc,
-              url: typeof window !== "undefined" ? window.location.href : "",
+              url: `${baseUrl}/shop${selectedCategory !== "all" ? `?cat=${selectedCategory}` : ""}`,
+              mainEntity: {
+                "@type": "ItemList",
+                itemListOrder: "https://schema.org/ItemListOrderAscending",
+                numberOfItems: 5,
+                itemListElement: [
+                  {
+                    "@type": "ListItem",
+                    position: 1,
+                    url: `${baseUrl}/product/1`,
+                    name: "Elegant Gold-Plated Necklace",
+                  },
+                  {
+                    "@type": "ListItem",
+                    position: 2,
+                    url: `${baseUrl}/product/2`,
+                    name: "Silver Drop Earrings",
+                  },
+                  {
+                    "@type": "ListItem",
+                    position: 3,
+                    url: `${baseUrl}/product/3`,
+                    name: "Pearl Bracelet Gift Set",
+                  },
+                  {
+                    "@type": "ListItem",
+                    position: 4,
+                    url: `${baseUrl}/product/4`,
+                    name: "Classic Pendant Chain",
+                  },
+                  {
+                    "@type": "ListItem",
+                    position: 5,
+                    url: `${baseUrl}/product/5`,
+                    name: "Rose Gold Stud Earrings",
+                  },
+                ],
+              },
             }),
           }}
+        />
+
+        {/* ✅ Schema.org JSON-LD — ItemList (for crawler fallback) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: itemListJson }}
         />
       </Head>
 
@@ -89,8 +183,7 @@ export default function ShopPage() {
             <Link
               key={cat}
               href={href}
-              className={`px-5 py-2.5 rounded-full text-sm border transition font-medium tracking-wide
-              ${
+              className={`px-5 py-2.5 rounded-full text-sm border transition font-medium tracking-wide ${
                 isActive
                   ? "bg-black text-white border-black shadow-md"
                   : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"

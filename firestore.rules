@@ -1,5 +1,6 @@
 rules_version = '2';
 
+// Helpers
 function isSignedIn() {
   return request.auth != null && request.auth.token.email != null;
 }
@@ -16,28 +17,18 @@ function isOwner(emailField) {
   return isSignedIn() && emailField == request.auth.token.email;
 }
 
+// Order validation (unchanged)
 function isValidOrder() {
-  return
-    request.resource.data.keys().hasAll([
+  return request.resource.data.keys().hasAll([
       'userId', 'customer', 'items', 'total', 'status', 'createdAt', 'payment'
     ]) &&
-
-    // Must match logged-in user
     isOwner(request.resource.data.userId) &&
-
-    // Items must be list and not empty
     (request.resource.data.items is list) &&
     (request.resource.data.items.size() > 0) &&
-
-    // First item basic checks
     request.resource.data.items[0].keys().hasAll(['id','name','price','qty']) &&
     (request.resource.data.items[0].price is number) &&
     (request.resource.data.items[0].qty is number) &&
-
-    // Total must be number
     (request.resource.data.total is number) &&
-
-    // Payment structure: either COD or Saved Card
     (
       (request.resource.data.payment.type == 'COD') ||
       (
@@ -47,41 +38,110 @@ function isValidOrder() {
     );
 }
 
+// Review validation for create
+function isValidReview() {
+  return request.resource.data.keys().hasAll(['userId', 'rating', 'comment', 'createdAt']) &&
+    isOwner(request.resource.data.userId) &&
+    (request.resource.data.rating is number) &&
+    (request.resource.data.rating >= 1 && request.resource.data.rating <= 5) &&
+    (request.resource.data.comment is string);
+}
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ✅ PRODUCTS
+    /* --------------------------- PRODUCTS --------------------------- */
     match /products/{productId} {
-      // Public read
+      // product listing & PDP => public read
       allow read: if true;
-      // Only admin can write
+
+      // admin-only writes
+      allow write: if isAdmin();
+
+      // reviews under products (fine to keep, but we also add a wildcard below)
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if isSignedIn() && isValidReview();
+
+        // Moderation & reporting rules (admins OR signed-in reporter increment)
+        allow update: if
+          isAdmin()
+          ||
+          (
+            isSignedIn() &&
+            // must be a reporting (flagging) action
+            request.resource.data.flagged == true &&
+            // flags must be numeric & increment by at least +1 (first-time flag allowed)
+            (request.resource.data.flags is number) &&
+            (
+              !('flags' in resource.data) ||
+              request.resource.data.flags >= resource.data.flags + 1
+            ) &&
+            // no content fields changed
+            request.resource.data.comment == resource.data.comment &&
+            request.resource.data.rating == resource.data.rating &&
+            request.resource.data.userId == resource.data.userId &&
+            // only allowed keys for this operation
+            request.writeFields.hasOnly([
+              'flagged','flags'
+            ])
+          );
+
+        // deletion rules
+        allow delete: if isSignedIn() && isOwner(resource.data.userId);
+        allow delete: if isAdmin();
+      }
+    }
+
+    /* --------------------------- WILDCARD REVIEWS (collectionGroup safe) ---------------------------
+       This ensures collectionGroup(...) queries (and reads on reviews under any parent path)
+       are matched by rules. Keep in sync with the nested rules above.
+    ------------------------------------------------------------------------------ */
+    match /{anyPath=**}/reviews/{reviewId} {
+      // allow reading reviews anywhere (PDP, public listing)
+      allow read: if true;
+
+      // creating a review under any parent path (e.g. products/{id}/reviews)
+      allow create: if isSignedIn() && isValidReview();
+
+      // update: same moderation rules as above
+      allow update: if
+        isAdmin()
+        ||
+        (
+          isSignedIn() &&
+          request.resource.data.flagged == true &&
+          (request.resource.data.flags is number) &&
+          (
+            !('flags' in resource.data) ||
+            request.resource.data.flags >= resource.data.flags + 1
+          ) &&
+          request.resource.data.comment == resource.data.comment &&
+          request.resource.data.rating == resource.data.rating &&
+          request.resource.data.userId == resource.data.userId &&
+          request.writeFields.hasOnly(['flagged','flags'])
+        );
+
+      // deletion rules
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+      allow delete: if isAdmin();
+    }
+
+    /* --------------------------- HERO SLIDES --------------------------- */
+    match /heroSlides/{slideId} {
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ✅ HERO SLIDES
-    // NOTE: We fetch all slides then filter on the client.
-    // So reads must be allowed for every document in the collection.
-    match /heroSlides/{slideId} {
-      allow read: if true;        // public read (required for client-side filtering)
-      allow write: if isAdmin();  // only admin can create/update/delete
-    }
-
-    // ✅ ORDERS
+    /* --------------------------- ORDERS --------------------------- */
     match /orders/{orderId} {
-      // Admin: full read/write
       allow read, write: if isAdmin();
-
-      // Customer: can read only their own orders
       allow read: if isSignedIn() && isOwner(resource.data.userId);
-
-      // Customer: can place orders with valid structure
       allow create: if isValidOrder();
-
-      // No updates/deletes from frontend for normal users
       allow update, delete: if false;
     }
 
-    // ✅ USERS (addresses, payments, notifications)
+    /* --------------------------- USERS --------------------------- */
     match /users/{userEmail} {
       allow read, create, update: if isOwner(userEmail);
 
@@ -95,8 +155,7 @@ service cloud.firestore {
 
       match /notifications/{notifId} {
         allow read, list: if isOwner(userEmail);
-        allow create: if isOwner(userEmail);
-        allow update: if isOwner(userEmail);
+        allow create, update: if isOwner(userEmail);
         allow delete: if false;
       }
     }

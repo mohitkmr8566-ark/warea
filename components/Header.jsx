@@ -1,6 +1,7 @@
 // components/Header.jsx
 "use client";
 
+import AdminSidebar from "@/components/admin/AdminSidebar";
 import { useAuth } from "@/store/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -84,24 +85,7 @@ export default function Header() {
           {/* 🔐 Admin-only links */}
           {user && isAdminUser && (
             <div className="flex items-center gap-3 ml-auto">
-              <Link
-                href="/admin/dashboard"
-                className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-100 px-2 py-1 rounded-md bg-blue-50"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/admin/orders"
-                className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-100 px-2 py-1 rounded-md bg-blue-50"
-              >
-                Orders
-              </Link>
-              <Link
-                href="/admin/products"
-                className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-100 px-2 py-1 rounded-md bg-blue-50"
-              >
-                Manage Products
-              </Link>
+              <AdminSidebar />
             </div>
           )}
         </nav>
