@@ -1,17 +1,44 @@
-// pages/order/[id].js
 "use client";
 
-import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import { doc, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import {
+  ArrowLeft,
+  Package,
+  Truck,
+  CheckCircle,
+  ClipboardList,
+  Calendar,
+  MapPin,
+  IndianRupee,
+  ShieldCheck,
+  Download,
+  XCircle,
+  RefreshCcw
+} from "lucide-react";
 import toast from "react-hot-toast";
+import OrderTimelineModal from "@/components/OrderTimelineModal";
 
-// ---------------- Timeline Helpers ----------------
-const STATUS_STEPS = ["Pending", "Processing", "Shipped", "Out for Delivery", "Delivered"];
-const FALLBACK_OFFSETS = { Pending: 0, Processing: 1, Shipped: 3, "Out for Delivery": 5, Delivered: 6 };
+
+
+// 🧭 Order Status Steps
+const STATUS_STEPS = [
+  { key: "Pending", label: "Pending", icon: ClipboardList },
+  { key: "Processing", label: "Processing", icon: Package },
+  { key: "Shipped", label: "Shipped", icon: Truck },
+  { key: "Out for Delivery", label: "Out for Delivery", icon: Truck },
+  { key: "Delivered", label: "Delivered", icon: CheckCircle },
+];
+
+const fmtINR = (n) => (Number(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+
 const toDateFlexible = (v) => {
   try {
     if (!v) return null;
@@ -28,63 +55,80 @@ const ensureDate = (v, fallback = new Date()) => toDateFlexible(v) || fallback;
 export default function OrderDetailPage() {
   const router = useRouter();
   const { id } = router.query;
+
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
+  // ⚡ Live Firestore Listener
   useEffect(() => {
     if (!id) return;
-
-    const unsub = onSnapshot(
-      doc(db, "orders", id),
-      (snap) => {
-        if (snap.exists()) {
-          setOrder({ id: snap.id, ...snap.data() });
-        } else {
-          setOrder(null);
-        }
+    const unsub = onSnapshot(doc(db, "orders", id), (snap) => {
+      if (snap.exists()) {
+        setOrder({ id: snap.id, ...snap.data() });
         setLoading(false);
-      },
-      (error) => {
-        console.error("Realtime fetch failed:", error);
+      } else {
+        setOrder(null);
         setLoading(false);
       }
-    );
-
+    });
     return () => unsub();
   }, [id]);
 
+  const createdAt = useMemo(() => (order ? ensureDate(order.createdAt) : null), [order]);
+
+  const statusIndex = useMemo(() => {
+    if (!order?.status) return 0;
+    return STATUS_STEPS.findIndex((s) => s.key === order.status) >= 0
+      ? STATUS_STEPS.findIndex((s) => s.key === order.status)
+      : 0;
+  }, [order]);
+
+  const statusTimestamps = order?.statusTimestamps || {};
+  const etaFrom = statusTimestamps["Out for Delivery"]
+    ? ensureDate(statusTimestamps["Out for Delivery"])
+    : null;
+  const etaTo = statusTimestamps["Delivered"] ? ensureDate(statusTimestamps["Delivered"]) : null;
+
+  const handleCancelOrder = async () => {
+    try {
+      await updateDoc(doc(db, "orders", order.id), { status: "Cancelled" });
+      toast.success("Order cancelled successfully");
+      router.push("/profile");
+    } catch (err) {
+      toast.error("Failed to cancel order");
+      console.error(err);
+    }
+  };
+
+  const handleDownloadInvoice = () => {
+    window.open(`/api/invoice/${order.id}`, "_blank");
+  };
+
+  // 🧾 Loading State (Shimmer UI)
   if (loading) {
     return (
-      <div className="text-center py-20 text-gray-500">
-        Loading order details...
+      <div className="max-w-5xl mx-auto px-4 py-10 space-y-6">
+        <Skeleton height={30} width="30%" />
+        <Skeleton height={50} />
+        <Skeleton height={120} />
+        <Skeleton height={80} />
       </div>
     );
   }
 
   if (!order) {
     return (
-      <div className="text-center py-20 text-gray-500">
-        Order not found or deleted.
+      <div className="min-h-[60vh] grid place-items-center text-center px-4">
+        <div>
+          <h1 className="text-2xl font-semibold mb-2">Order Not Found</h1>
+          <Link href="/profile" className="text-blue-600 hover:text-blue-700">
+            Back to My Orders
+          </Link>
+        </div>
       </div>
     );
   }
-
-  // ---------------- Build Timeline ----------------
-  const createdAt = ensureDate(order.createdAt, new Date());
-  const currentStep = Math.max(0, STATUS_STEPS.indexOf(order.status || "Pending"));
-  const ts = order.statusTimestamps || {};
-  const stepDates = STATUS_STEPS.reduce((acc, step) => {
-    const actual = ensureDate(ts?.[step], null);
-    if (actual) acc[step] = actual;
-    else {
-      const d = new Date(createdAt);
-      d.setDate(d.getDate() + (FALLBACK_OFFSETS[step] ?? 0));
-      acc[step] = d;
-    }
-    return acc;
-  }, {});
-  const etaFrom = stepDates["Out for Delivery"];
-  const etaTo = stepDates["Delivered"];
 
   return (
     <>
@@ -92,183 +136,181 @@ export default function OrderDetailPage() {
         <title>Order #{order.id.slice(0, 6)} — Warea</title>
       </Head>
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold">
-            Order #{order.id.slice(0, 6)}
-          </h1>
-          {order.status === "Pending" && (
-            <button
-              onClick={async () => {
-                if (!confirm("Cancel this order?")) return;
-                try {
-                  await updateDoc(doc(db, "orders", order.id), {
-                    status: "Cancelled",
-                    "statusTimestamps.Cancelled": serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                  });
-                  toast.success("Order cancelled.");
-                } catch (e) {
-                  toast.error("Failed to cancel order.");
-                }
-              }}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
-            >
-              Cancel Order
-            </button>
-          )}
-        </div>
+      <div className="max-w-5xl mx-auto px-4 py-10">
+        {/* Back link */}
+        <Link
+          href="/profile"
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 mb-6"
+        >
+          <ArrowLeft size={16} /> Back to My Orders
+        </Link>
 
-        {/* Status */}
-        <div className="bg-white rounded-xl shadow p-6 mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3">
-            <div>
-              <p className="text-sm text-gray-500">Status</p>
-              <p className="font-semibold text-gray-900">
-                {order.status || "Pending"}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Placed on{" "}
-                {createdAt.toLocaleString(undefined, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </p>
-              {order.status !== "Cancelled" && etaFrom && etaTo && (
-                <p className="text-xs text-gray-600 mt-1">
-                  Estimated delivery{" "}
-                  <span className="font-medium">
-                    {etaFrom.toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    })}{" "}
-                    –{" "}
-                    {etaTo.toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
-                </p>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Order #{order.id.slice(0, 6)}
+            </h1>
+            <p className="text-sm text-gray-600">
+              Placed on {createdAt?.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+              {etaFrom && etaTo && (
+                <> • ETA {etaFrom.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - {etaTo.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</>
               )}
-            </div>
+            </p>
           </div>
 
-          {/* Timeline */}
-          <div className="relative mt-6">
-            <div className="absolute left-0 right-0 top-4 h-1 bg-gray-200 rounded" />
-            <div
-              className="absolute left-0 top-4 h-1 bg-green-500 rounded"
-              style={{ width: `${(currentStep / (STATUS_STEPS.length - 1)) * 100}%` }}
-            />
-            <div className="relative flex justify-between">
-              {STATUS_STEPS.map((label, i) => {
-                const reached = i <= currentStep;
-                const d = stepDates[label];
-                return (
-                  <div
-                    key={label}
-                    className="flex flex-col items-center text-center w-24"
-                  >
-                    <div
-                      className={`w-8 h-8 grid place-items-center rounded-full border-2 text-sm font-semibold ${
-                        reached
-                          ? "bg-green-500 border-green-500 text-white"
-                          : "bg-white border-gray-300 text-gray-400"
-                      }`}
-                    >
-                      {i + 1}
-                    </div>
-                    <div
-                      className={`mt-2 text-xs ${
-                        reached ? "text-green-700 font-medium" : "text-gray-500"
-                      }`}
-                    >
-                      {label}
-                    </div>
-                    <div className="mt-1 text-[11px] text-gray-400">
-                      {d?.toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleDownloadInvoice}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium hover:bg-gray-50"
+            >
+              <Download size={18} /> Download Invoice
+            </button>
+
+            {/* 🛑 Cancel Button */}
+            {(order.status === "Pending" || order.status === "Processing") && (
+              <button
+                onClick={handleCancelOrder}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-red-500 text-red-600 hover:bg-red-50 transition"
+              >
+                <XCircle size={18} /> Cancel Order
+              </button>
+            )}
+
+            {/* 🔁 Replacement Button */}
+            {order.status === "Delivered" && (
+              <button
+                onClick={() => toast.success("Replacement flow coming soon")}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-amber-500 text-amber-600 hover:bg-amber-50 transition"
+              >
+                <RefreshCcw size={18} /> Request Replacement
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Timeline */}
+        <div className="hidden sm:block relative mb-10">
+          <div className="absolute top-5 left-0 w-full h-[2px] bg-gray-200"></div>
+          <div
+            className="absolute top-5 left-0 h-[2px] bg-green-500 transition-all duration-500"
+            style={{ width: `${(statusIndex / (STATUS_STEPS.length - 1)) * 100}%` }}
+          ></div>
+          <div className="flex justify-between relative">
+            {STATUS_STEPS.map((step, idx) => {
+              const Icon = step.icon;
+              const isActive = idx <= statusIndex;
+              return (
+                <div key={step.key} className="flex flex-col items-center text-center w-full">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+                      isActive ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500"
+                    }`}
+                  >
+                    <Icon size={20} />
+                  </div>
+                  <p className="mt-2 text-xs font-medium text-gray-800">{step.label}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 📱 Mobile Timeline Button */}
+        <button
+          onClick={() => setTimelineOpen(true)}
+          className="block sm:hidden mb-6 text-amber-600 font-medium underline"
+        >
+          View Order Timeline
+        </button>
 
         {/* Items */}
-        <div className="bg-white rounded-xl shadow p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-3">Items</h2>
-          <div className="space-y-4">
-            {order.items?.map((item, i) => (
-              <div
-                key={i}
-                className="flex justify-between items-center border-b pb-3 last:border-b-0"
-              >
-                <Link href={`/product/${item.id}`} className="flex items-center gap-3 hover:opacity-90">
-                  <img
-                    src={
-                      item.image ||
-                      item.imageUrl ||
-                      item.images?.[0] ||
-                      "/products/placeholder.png"
-                    }
-                    alt={item.name}
-                    className="w-14 h-14 rounded object-cover border"
-                  />
-                  <div>
-                    <p className="font-medium text-sm">{item.name}</p>
-                    <p className="text-xs text-gray-500">Qty: {item.qty}</p>
-                  </div>
-                </Link>
-                <p className="font-medium text-sm">
-                  ₹{Number(item.price * item.qty).toLocaleString("en-IN")}
-                </p>
+        <div className="space-y-4 mb-10">
+          {order.items?.map((item, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.05 }}
+              className="rounded-xl border bg-white shadow-sm hover:shadow-md transition p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+            >
+              <div className="flex items-start gap-3 w-full sm:w-auto">
+                <img
+                  src={item.image || item.images?.[0] || "/products/placeholder.png"}
+                  alt={item.name}
+                  className="w-20 h-20 object-cover rounded-md border"
+                />
+                <div>
+                  <Link
+                    href={`/product/${item.id}`}
+                    className="font-semibold text-gray-900 hover:text-amber-600 transition"
+                  >
+                    {item.name}
+                  </Link>
+                  <p className="text-xs text-gray-500">
+                    Qty: {item.qty || 1} • ₹{fmtINR(item.price)}
+                  </p>
+                </div>
               </div>
-            ))}
+              <span className="font-semibold text-gray-900 ml-auto text-sm">
+                ₹{fmtINR(item.qty * item.price)}
+              </span>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Shipping & Payment */}
+        <div className="grid sm:grid-cols-2 gap-6 mb-12">
+          <div className="bg-gray-50 border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin className="text-amber-600" size={18} />
+              <h3 className="text-sm font-semibold text-gray-800">Shipping Address</h3>
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed">
+              {order.customer?.name}<br />
+              {order.customer?.address}<br />
+              {order.customer?.city}, {order.customer?.state} {order.customer?.pincode}<br />
+              {order.customer?.phone}
+            </p>
+          </div>
+
+          <div className="bg-gray-50 border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <IndianRupee className="text-amber-600" size={18} />
+              <h3 className="text-sm font-semibold text-gray-800">Payment Summary</h3>
+            </div>
+            <div className="text-sm space-y-1">
+              <div className="flex justify-between"><span>Subtotal</span><span>₹{fmtINR(order.total)}</span></div>
+              <div className="flex justify-between"><span>Shipping</span><span>Free</span></div>
+              <div className="flex justify-between font-semibold text-gray-900 border-t pt-1">
+                <span>Total Paid</span><span>₹{fmtINR(order.total)}</span>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Payment Mode: <span className="font-medium text-gray-800">{order.paymentMode || "Razorpay / COD"}</span>
+            </p>
           </div>
         </div>
 
-        {/* Shipping */}
-        <div className="bg-white rounded-xl shadow p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-3">Shipping Address</h2>
-          <p className="text-sm text-gray-700 leading-relaxed">
-            {order.customer?.name}, {order.customer?.address},{" "}
-            {order.customer?.city}, {order.customer?.state} -{" "}
-            {order.customer?.pincode}
-          </p>
-          {order.customer?.phone && (
-            <p className="text-sm text-gray-500 mt-1">
-              Phone: {order.customer.phone}
+        {/* Replacement Policy */}
+        <div className="bg-white border rounded-xl p-4 flex items-start gap-3">
+          <ShieldCheck className="text-amber-600 mt-1" size={20} />
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800 mb-1">Replacement Policy</h3>
+            <p className="text-sm text-gray-600">
+              Warea offers a <strong>7-day replacement</strong> policy from the date of delivery.
+              If your product is defective or damaged, you can raise a replacement request through your profile page.
             </p>
-          )}
-        </div>
-
-        {/* Total */}
-        <div className="bg-white rounded-xl shadow p-6 mb-8 flex justify-between text-lg font-semibold">
-          <span>Total:</span>
-          <span>₹{Number(order.total || 0).toLocaleString("en-IN")}</span>
-        </div>
-
-        <div className="text-center mt-8 flex flex-wrap gap-3 justify-center">
-          <button
-            onClick={() => router.push("/profile")}
-            className="px-6 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-          >
-            ← Back to Profile
-          </button>
-          {order.status !== "Cancelled" && (
-            <button
-              onClick={() => window.print()}
-              className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800"
-            >
-              🧾 Print / Download Invoice
-            </button>
-          )}
+          </div>
         </div>
       </div>
+
+      {/* 📱 Timeline Modal */}
+      <OrderTimelineModal
+        open={timelineOpen}
+        onClose={() => setTimelineOpen(false)}
+        order={order}
+      />
     </>
   );
 }
