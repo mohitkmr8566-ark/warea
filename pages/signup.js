@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/store/AuthContext";
 import toast from "react-hot-toast";
@@ -11,6 +11,13 @@ export default function SignupPage() {
   const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
+
+  // 🟡 Save return path before signup
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("returnTo", document.referrer || "/profile");
+    }
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -102,7 +109,10 @@ export default function SignupPage() {
 
           <p className="text-center mt-6 text-sm text-gray-500">
             Already have an account?{" "}
-            <a href="/login" className="text-yellow-600 hover:underline font-medium">
+            <a
+              href="/login"
+              className="text-yellow-600 hover:underline font-medium"
+            >
               Login
             </a>
           </p>
