@@ -1,5 +1,6 @@
 "use client";
 
+import Head from "next/head";
 import { useState } from "react";
 
 export default function ContactPage() {
@@ -34,6 +35,19 @@ export default function ContactPage() {
   }
 
   return (
+    <>
+  <Head>
+    <title>Contact Warea Creations | Customer Support</title>
+    <meta
+      name="description"
+      content="Get in touch with Warea Creations. For queries, feedback, or support, reach us via the contact form or email at support@warea.com."
+    />
+    <link rel="canonical" href={`${process.env.NEXT_PUBLIC_BASE_URL || "https://warea.in"}/contact`} />
+    <meta property="og:title" content="Contact Warea Creations" />
+    <meta property="og:description" content="Reach Warea customer support via our contact form or email." />
+    <meta property="og:image" content="/logo.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </Head>
     <div className="max-w-3xl mx-auto px-6 py-16">
       <h1 className="text-4xl font-bold font-serif text-center mb-6">
         Contact Us
@@ -98,5 +112,6 @@ export default function ContactPage() {
         Or call us at <span className="font-semibold">+91 98765 43210</span>
       </div>
     </div>
+    </>
   );
 }

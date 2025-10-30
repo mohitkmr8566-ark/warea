@@ -16,12 +16,13 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const auth = getAuth(app);
-  const [user, setUser] = useState(null);      // <- raw Firebase user
+  const [user, setUser] = useState(null); // raw Firebase user
   const [loading, setLoading] = useState(true);
 
+  // 🔄 Watch authentication state
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser || null);           // keep raw user (has getIdToken)
+      setUser(firebaseUser || null);
       try {
         if (firebaseUser) {
           // Optional: keep a light profile in localStorage for UI hydration
@@ -39,23 +40,32 @@ export function AuthProvider({ children }) {
     return () => unsub();
   }, [auth]);
 
-  // Helper: always resolves to a fresh ID token (or null if signed out)
+  // 🟡 Return-to Redirect — if user logs in successfully
+  useEffect(() => {
+    if (user && typeof window !== "undefined") {
+      const returnTo = localStorage.getItem("returnTo");
+      if (returnTo) {
+        localStorage.removeItem("returnTo");
+        window.location.href = returnTo;
+      }
+    }
+  }, [user]);
+
+  // ✅ Helper: Get fresh ID token
   const getIdToken = async () => {
     try {
       if (!auth.currentUser) return null;
-      return await auth.currentUser.getIdToken(/* forceRefresh */ true);
+      return await auth.currentUser.getIdToken(true);
     } catch {
       return null;
     }
   };
 
-  // Email-password signup
+  // ✅ Signup
   const signup = async (email, password, name) => {
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
-      // Keep raw user
       setUser(res.user);
-      // Optional local profile
       const profile = { email: res.user.email, name: name || "Customer" };
       localStorage.setItem("user", JSON.stringify(profile));
       toast.success("Account created ✅");
@@ -67,7 +77,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Email-password login
+  // ✅ Login
   const login = async (email, password) => {
     try {
       const res = await signInWithEmailAndPassword(auth, email, password);
@@ -86,7 +96,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Google login
+  // ✅ Google Login
   const googleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
@@ -106,7 +116,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Logout
+  // ✅ Logout
   const logout = async () => {
     await signOut(auth);
     setUser(null);
