@@ -6,78 +6,58 @@ import CategorySection from "@/components/CategorySection";
 import ProductGrid from "@/components/ProductGrid";
 import { motion } from "framer-motion";
 
+// ✅ Import reusable SEO helpers
+import {
+  getBaseUrl,
+  getOrganizationSchema,
+  getWebsiteSchema,
+  getBreadcrumbSchema,
+  getProductSchemas,
+} from "@/lib/seoSchemas";
+
 export default function HomePage() {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  const baseUrl = getBaseUrl();
 
-  /* ---------------------- JSON-LD SCHEMAS ---------------------- */
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Warea Creations",
-    legalName: "Sarmistha Biswas (Warea Creations)",
-    url: baseUrl,
-    logo: `${baseUrl}/logo.png`,
-    foundingDate: "2024",
-    founder: {
-      "@type": "Person",
-      name: "Sarmistha Biswas",
+  // 🛍️ Featured products for schema
+  const featuredProducts = [
+    {
+      name: "Gold Plated Heart Earrings",
+      image: `${baseUrl}/products/heart-earrings.jpg`,
+      price: "249",
+      ratingValue: 4.8,
+      reviewCount: 112,
+      url: `${baseUrl}/product/gold-plated-heart-earrings`,
     },
-    contactPoint: {
-      "@type": "ContactPoint",
-      telephone: "+91-9876543210",
-      contactType: "customer service",
-      areaServed: "IN",
-      availableLanguage: ["en", "hi"],
+    {
+      name: "Heart Stud Earrings",
+      image: `${baseUrl}/products/heart-stud.jpg`,
+      price: "285",
+      ratingValue: 4.6,
+      reviewCount: 98,
+      url: `${baseUrl}/product/heart-stud-earrings`,
     },
-    sameAs: [
-      "https://www.instagram.com/warea",
-      "https://www.facebook.com/warea",
-      "https://www.youtube.com/@warea",
-      "https://x.com/warea",
-    ],
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "120 D1, 2nd Floor, SK Medical Store, Nauraiya Khera",
-      addressLocality: "Kanpur Nagar",
-      addressRegion: "Uttar Pradesh",
-      postalCode: "208022",
-      addressCountry: "IN",
+    {
+      name: "Gold Plated Flower Earrings",
+      image: `${baseUrl}/products/flower-earrings.jpg`,
+      price: "299",
+      ratingValue: 4.9,
+      reviewCount: 157,
+      url: `${baseUrl}/product/gold-plated-flower-earrings`,
     },
-  };
+  ];
 
-  const websiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "Warea Jewellery",
-    url: baseUrl,
-    description:
-      "Shop exquisite handcrafted gold & silver jewellery online from Warea — minimal, elegant, and BIS-certified designs.",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${baseUrl}/search?query={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
-  };
+  // ✅ Combine all schema generators
+  const schemas = [
+    getOrganizationSchema(baseUrl),
+    getWebsiteSchema(baseUrl),
+    getBreadcrumbSchema(baseUrl),
+    ...getProductSchemas(baseUrl, featuredProducts),
+  ];
 
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: baseUrl,
-      },
-    ],
-  };
-
-  /* ---------------------- META TAGS ---------------------- */
   return (
     <>
       <Head>
+        {/* ✅ Meta + SEO Tags */}
         <title>
           Warea Jewellery | Handcrafted Gold & Silver Jewellery Online in India
         </title>
@@ -93,7 +73,10 @@ export default function HomePage() {
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="Warea Jewellery | Elegant Gold & Silver Jewellery" />
+        <meta
+          property="og:title"
+          content="Warea Jewellery | Elegant Gold & Silver Jewellery"
+        />
         <meta
           property="og:description"
           content="Explore premium handcrafted gold & silver jewellery from Warea Creations — certified, hallmarked, and timeless."
@@ -103,26 +86,24 @@ export default function HomePage() {
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Warea Jewellery | Elegant Gold & Silver Jewellery" />
+        <meta
+          name="twitter:title"
+          content="Warea Jewellery | Elegant Gold & Silver Jewellery"
+        />
         <meta
           name="twitter:description"
           content="Discover timeless handcrafted gold & silver jewellery at Warea Creations."
         />
         <meta name="twitter:image" content={`${baseUrl}/logo.png`} />
 
-        {/* JSON-LD Schemas */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-        />
+        {/* ✅ Inject all JSON-LD Schemas */}
+        {schemas.map((schema, i) => (
+          <script
+            key={i}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          />
+        ))}
       </Head>
 
       {/* Hero */}
@@ -145,7 +126,7 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center"
           >
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold tracking-wide text-center mb-8">
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold tracking-wide mb-8">
               Featured Products
             </h2>
           </motion.div>

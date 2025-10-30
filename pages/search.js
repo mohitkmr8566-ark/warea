@@ -322,5 +322,5 @@ function SearchLayout({
 }
 
 export default function Wrapper(props) {
-  return props.ssrDisabled ? <ClientSearch /> : <SearchPage {...props} />;
+  return props.ssrDisabled ? <ClientSearch /> : <SearchLayout {...props} />;
 }

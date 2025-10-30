@@ -43,9 +43,14 @@ import { useWishlist } from "@/store/WishlistContext";
 import { useAuth } from "@/store/AuthContext"; // assumes AuthContext exists in project
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import dynamic from "next/dynamic";
 import { addReview as addReviewToDb } from "@/lib/reviews"; // helper (create file as above)
+
+// ✅ SEO helper import
+import { getBaseUrl, getProductPageSchemas } from "@/lib/seoSchemas";
+
+const Skeleton = dynamic(() => import("react-loading-skeleton"), { ssr: false });
 
 /* ----------------------------- Utils ----------------------------- */
 const fmtINR = (n) =>
@@ -484,78 +489,15 @@ export default function ProductDetailPage() {
   }
 
   /* ------------------------------- SEO -------------------------------- */
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "");
-  const productUrl = baseUrl && id ? `${baseUrl}/product/${id}` : typeof window !== "undefined" ? window.location.href : "";
-
+  // using reusable helper from /lib/seoSchemas.js
+  const baseUrl = getBaseUrl();
+  const productUrl = baseUrl && product?.id ? `${baseUrl}/product/${product.id}` : typeof window !== "undefined" ? window.location.href : "";
   const title = `${product.title} | Warea`;
-  const desc = product.description?.slice(0, 150) || `Shop ${product.title} by Warea. Anti-tarnish, premium finish, fast shipping.`;
-  const ogImg = images?.[0]?.url;
+  const desc = product.description?.slice(0, 150) || `Shop ${product.title} by Warea. Anti-tarnish, Premium handcrafted jewellery with fast delivery.`;
+  const ogImg = images?.[0]?.url || `${baseUrl}/og-image.jpg`;
 
-  const productJsonLd = {
-    "@context": "https://schema.org/",
-    "@type": "Product",
-    name: product.title,
-    sku: product.sku || product.id,
-    brand: { "@type": "Brand", name: "Warea" },
-    category: product.category || "Jewellery",
-    image: images.map((i) => i.url),
-    description: desc,
-    material: product.material || undefined,
-    url: productUrl || undefined,
-    offers: {
-      "@type": "Offer",
-      priceCurrency: "INR",
-      price: Number(priceBlock.price || 0),
-      availability: "https://schema.org/InStock",
-      itemCondition: "https://schema.org/NewCondition",
-      url: productUrl || undefined,
-      seller: {
-        "@type": "Organization",
-        name: "Warea Creations",
-      },
-    },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: Number(ratingValue || 4.8),
-      reviewCount: Number(reviewCount || 126),
-    },
-  };
-
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: `${baseUrl || ""}/`,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Shop",
-        item: `${baseUrl || ""}/shop`,
-      },
-      ...(product.category
-        ? [
-            {
-              "@type": "ListItem",
-              position: 3,
-              name: product.category,
-              item: `${baseUrl || ""}/shop?category=${encodeURIComponent(product.category)}`,
-            },
-          ]
-        : []),
-      {
-        "@type": "ListItem",
-        position: product.category ? 4 : 3,
-        name: product.title,
-        item: productUrl || undefined,
-      },
-    ],
-  };
+  // get schemas (organization + breadcrumb + product)
+  const schemas = getProductPageSchemas(baseUrl, product || {}, reviews || [], ratingValue, reviewCount);
 
   /* ------------------------------ Render ------------------------------ */
   return (
@@ -577,8 +519,11 @@ export default function ProductDetailPage() {
         <meta name="twitter:description" content={desc} />
         {ogImg && <meta name="twitter:image" content={ogImg} />}
 
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+        {/* Inject schemas from reusable helper */}
+        {Array.isArray(schemas) &&
+          schemas.map((schema, i) => (
+            <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+          ))}
       </Head>
 
       <div className="max-w-7xl mx-auto px-4 py-10">
