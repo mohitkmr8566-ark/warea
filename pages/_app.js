@@ -1,7 +1,6 @@
 // pages/_app.js
-
 import { SpeedInsights } from "@vercel/speed-insights/next";
-
+import Script from "next/script"; // ✅ Add this
 import "@/styles/globals.css";
 import "react-loading-skeleton/dist/skeleton.css";
 
@@ -12,7 +11,6 @@ import { WishlistProvider } from "@/store/WishlistContext";
 import { AuthProvider } from "@/store/AuthContext";
 import { Toaster } from "react-hot-toast";
 
-// ✅ SEO Imports
 import Head from "next/head";
 import { DefaultSeo } from "next-seo";
 import SEO from "../next-seo.config";
@@ -46,7 +44,7 @@ export default function MyApp({ Component, pageProps, router }) {
 
   return (
     <>
-      {/* ✅ Global SEO + Sitemap + Schema */}
+      {/* ✅ Global SEO + Schema */}
       <Head>
         <link
           rel="sitemap"
@@ -63,7 +61,7 @@ export default function MyApp({ Component, pageProps, router }) {
         />
         <meta name="mobile-web-app-capable" content="yes" />
 
-        {/* WebSite Schema */}
+        {/* Schema.org JSON-LD */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -80,7 +78,6 @@ export default function MyApp({ Component, pageProps, router }) {
             }),
           }}
         />
-        {/* Organization Schema */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -89,29 +86,41 @@ export default function MyApp({ Component, pageProps, router }) {
         />
       </Head>
 
-      {/* ✅ Default SEO Configuration */}
+      {/* ✅ GTM / GA4 Scripts — Deferred for Performance */}
+      <Script
+        src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"
+        strategy="afterInteractive" // Loads after page becomes interactive
+      />
+      <Script id="gtag-init" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-XXXXXXXXXX', {
+            page_path: window.location.pathname,
+          });
+        `}
+      </Script>
+
+      {/* ✅ Default SEO */}
       <DefaultSeo {...SEO} />
 
+      {/* ✅ Providers */}
       <CartProvider>
         <WishlistProvider>
           <AuthProvider>
             <Toaster position="top-right" />
             <div className="min-h-screen flex flex-col">
               <Header />
-              {isHomePage ? (
-                <main className="flex-1 w-full">
-                  <Component {...pageProps} />
-                </main>
-              ) : (
-                <main className="flex-1 page-container">
-                  <Component {...pageProps} />
-                </main>
-              )}
+              <main className={isHomePage ? "flex-1 w-full" : "flex-1 page-container"}>
+                <Component {...pageProps} />
+              </main>
               <Footer />
             </div>
           </AuthProvider>
         </WishlistProvider>
       </CartProvider>
+
       <SpeedInsights />
     </>
   );

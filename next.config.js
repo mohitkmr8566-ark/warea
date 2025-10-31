@@ -5,15 +5,25 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
 
+  // ✅ Image Optimization (automatic WebP & AVIF for best LCP score)
   images: {
-    unoptimized: true,
     domains: ["res.cloudinary.com"],
-    formats: ["image/avif", "image/webp"], // ✅ enables better compression formats
+    formats: ["image/avif", "image/webp"],
   },
 
   eslint: {
-    // ✅ Allows production builds to complete even if ESLint errors exist
     ignoreDuringBuilds: true,
+  },
+
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+    ];
   },
 
   async rewrites() {

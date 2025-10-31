@@ -58,17 +58,34 @@ export default function ProductCard({ product }) {
         <Link href={detailPath} className="relative block overflow-hidden">
           <div className="aspect-square w-full relative bg-gray-50">
             <img
-              src={primary}
+              src={`${primary}?f_auto,q_auto,w=480`}
+              srcSet={`
+                ${primary}?f_auto,q_auto,w=320 320w,
+                ${primary}?f_auto,q_auto,w=480 480w,
+                ${primary}?f_auto,q_auto,w=768 768w
+              `}
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               alt={product.title}
+              loading="lazy"
+              decoding="async"
               className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out
                 ${hovered ? "scale-110 opacity-0" : "opacity-100"}`}
-              onError={(e) => (e.currentTarget.src = "/products/placeholder.png")}
+              onError={(e) => (e.currentTarget.src = "/placeholder.png")}
             />
 
             {secondary && (
               <img
-                src={secondary}
+                src={`${secondary}?f_auto,q_auto,w=480`}
+                srcSet={`
+                  ${secondary}?f_auto,q_auto,w=320 320w,
+                  ${secondary}?f_auto,q_auto,w=480 480w,
+                  ${secondary}?f_auto,q_auto,w=768 768w
+                `}
+                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+
                 alt={`${product.title} alternate`}
+                loading="lazy"
+                decoding="async"
                 className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out
                   ${hovered ? "opacity-100 scale-105" : "opacity-0"}`}
                 onError={(e) => (e.currentTarget.style.display = "none")}
