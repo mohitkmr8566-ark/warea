@@ -1,4 +1,7 @@
 // pages/_app.js
+
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
 import "@/styles/globals.css";
 import "react-loading-skeleton/dist/skeleton.css";
 
@@ -109,6 +112,7 @@ export default function MyApp({ Component, pageProps, router }) {
           </AuthProvider>
         </WishlistProvider>
       </CartProvider>
+      <SpeedInsights />
     </>
   );
 }

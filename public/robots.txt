@@ -1,0 +1,14 @@
+# *
+User-agent: *
+Allow: /
+
+# *
+User-agent: *
+Disallow: /admin
+Disallow: /api
+
+# Host
+Host: https://warea.vercel.app
+
+# Sitemaps
+Sitemap: https://warea.vercel.app/sitemap.xml
