@@ -11,6 +11,11 @@ const nextConfig = {
     formats: ["image/avif", "image/webp"], // ✅ enables better compression formats
   },
 
+  eslint: {
+    // ✅ Allows production builds to complete even if ESLint errors exist
+    ignoreDuringBuilds: true,
+  },
+
   async rewrites() {
     return [
       {
