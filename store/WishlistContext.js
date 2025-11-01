@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+// store/WishlistContext.js
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 
 const WishlistContext = createContext();
 
@@ -7,41 +15,44 @@ export function WishlistProvider({ children }) {
 
   // Load from localStorage once
   useEffect(() => {
-    const s = localStorage.getItem("wishlist");
-    if (s) setWishlist(JSON.parse(s));
+    try {
+      const s = localStorage.getItem("wishlist");
+      if (s) setWishlist(JSON.parse(s));
+    } catch {}
   }, []);
 
   // Persist on change
   useEffect(() => {
-    localStorage.setItem("wishlist", JSON.stringify(wishlist));
+    try {
+      localStorage.setItem("wishlist", JSON.stringify(wishlist));
+    } catch {}
   }, [wishlist]);
 
-  // ✅ Helper: Check if product is already in wishlist
+  // Check if product exists
   const inWishlist = useCallback(
     (id) => wishlist.some((p) => p.id === id),
     [wishlist]
   );
 
-  // ✅ Add/Remove Toggle
-  const toggleItem = useCallback(
-    (product) => {
-      setWishlist((prev) => {
-        const exists = prev.some((p) => p.id === product.id);
-        if (exists) {
-          return prev.filter((p) => p.id !== product.id);
-        }
-        return [...prev, product];
-      });
-    },
-    []
+  // Add or Remove
+  const toggleItem = useCallback((product) => {
+    setWishlist((prev) => {
+      const exists = prev.some((p) => p.id === product.id);
+      return exists ? prev.filter((p) => p.id !== product.id) : [...prev, product];
+    });
+  }, []);
+
+  // Clear wishlist
+  const clearWishlist = useCallback(() => setWishlist([]), []);
+
+  // ✅ Memoized value
+  const value = useMemo(
+    () => ({ wishlist, inWishlist, toggleItem, clearWishlist }),
+    [wishlist, inWishlist, toggleItem, clearWishlist]
   );
 
-  const clearWishlist = () => setWishlist([]);
-
   return (
-    <WishlistContext.Provider
-      value={{ wishlist, inWishlist, toggleItem, clearWishlist }}
-    >
+    <WishlistContext.Provider value={value}>
       {children}
     </WishlistContext.Provider>
   );

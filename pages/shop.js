@@ -1,17 +1,25 @@
-"use client";
-
+// pages/shop.js
 import Head from "next/head";
-import { useRouter } from "next/router";
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import { useState, useMemo, useCallback } from "react";
 import { SlidersHorizontal } from "lucide-react";
-import ProductGrid from "@/components/ProductGrid";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
-export default function ShopPage() {
+const ProductGrid = dynamic(() => import("@/components/ProductGrid"), {
+  ssr: false,
+});
+
+export default function ShopPage({ initialProducts, baseUrlFromServer }) {
   const router = useRouter();
-  const selectedCategory =
-    typeof router.query.cat === "string" ? router.query.cat.toLowerCase() : "all";
+
+  const selectedCategory = useMemo(() => {
+    const cat = router.query.cat;
+    return typeof cat === "string" ? cat.toLowerCase() : "all";
+  }, [router.query.cat]);
 
   const [sort, setSort] = useState("");
   const [priceRange, setPriceRange] = useState([0, 10000]);
@@ -22,17 +30,37 @@ export default function ShopPage() {
     []
   );
 
-  const heading =
-    selectedCategory && selectedCategory !== "all"
-      ? `${selectedCategory[0].toUpperCase()}${selectedCategory.slice(1)} Collection`
-      : "Shop All Products";
+  const updateQuery = useCallback(
+    (key, value) => {
+      const newQuery = { ...router.query };
+      if (!value || value === "all") delete newQuery[key];
+      else newQuery[key] = value;
+      router.push({ pathname: "/shop", query: newQuery }, undefined, {
+        shallow: true,
+      });
+    },
+    [router]
+  );
+
+  const handlePriceChange = useCallback((e) => {
+    const [min, max] = e.target.value.split("-").map(Number);
+    setPriceRange([min, max]);
+  }, []);
+
+  const heading = useMemo(
+    () =>
+      selectedCategory !== "all"
+        ? `${selectedCategory[0].toUpperCase()}${selectedCategory.slice(1)} Collection`
+        : "Shop All Products",
+    [selectedCategory]
+  );
 
   const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+    baseUrlFromServer ||
+    (typeof window !== "undefined" ? window.location.origin : "");
 
   const pageTitle =
-    selectedCategory && selectedCategory !== "all"
+    selectedCategory !== "all"
       ? `${heading} | Warea Jewellery`
       : "Shop Jewellery Online | Warea";
 
@@ -40,185 +68,99 @@ export default function ShopPage() {
     selectedCategory === "all" ? "" : selectedCategory
   } jewellery at Warea. Explore premium handcrafted anti-tarnish collections at affordable prices.`;
 
-  const handlePriceChange = (e) => {
-    const [min, max] = e.target.value.split("-").map(Number);
-    setPriceRange([min, max]);
-  };
-
-  /* -------------------- SEO STRUCTURED DATA -------------------- */
-  const [itemListJson, setItemListJson] = useState("");
-
-  useEffect(() => {
-    const mockProducts = [
-      { id: "1", title: "Elegant Gold-Plated Necklace" },
-      { id: "2", title: "Silver Drop Earrings" },
-      { id: "3", title: "Pearl Bracelet Gift Set" },
-      { id: "4", title: "Classic Pendant Chain" },
-      { id: "5", title: "Rose Gold Stud Earrings" },
-    ];
-
-    const schema = {
+  const itemListJson = useMemo(() => {
+    const sample = initialProducts.slice(0, 5) || [];
+    return JSON.stringify({
       "@context": "https://schema.org",
       "@type": "ItemList",
       name: heading,
-      itemListOrder: "https://schema.org/ItemListOrderAscending",
-      numberOfItems: mockProducts.length,
-      itemListElement: mockProducts.map((p, index) => ({
+      numberOfItems: sample.length,
+      itemListElement: sample.map((p, i) => ({
         "@type": "ListItem",
-        position: index + 1,
+        position: i + 1,
         url: `${baseUrl}/product/${p.id}`,
         name: p.title,
       })),
-    };
+    });
+  }, [initialProducts, heading, baseUrl]);
 
-    setItemListJson(JSON.stringify(schema));
-  }, [selectedCategory, heading, baseUrl]);
-
-  /* -------------------- RENDER -------------------- */
   return (
     <>
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
-        <meta name="keywords" content="warea, jewellery, earrings, necklaces, bracelets, gold jewellery, silver jewellery, buy online, handmade jewellery" />
         <link
           rel="canonical"
-          href={`${baseUrl}/shop${selectedCategory !== "all" ? `?cat=${selectedCategory}` : ""}`}
+          href={`${baseUrl}/shop${
+            selectedCategory !== "all" ? `?cat=${selectedCategory}` : ""
+          }`}
         />
-
-        {/* ✅ Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content={`${baseUrl}/shop`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
         <meta property="og:image" content={`${baseUrl}/logo.png`} />
-
-        {/* ✅ Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={pageTitle} />
-        <meta name="twitter:description" content={pageDesc} />
-        <meta name="twitter:image" content={`${baseUrl}/logo.png`} />
-
-        {/* ✅ Schema.org JSON-LD — CollectionPage */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "CollectionPage",
-              name: heading,
-              description: pageDesc,
-              url: `${baseUrl}/shop${selectedCategory !== "all" ? `?cat=${selectedCategory}` : ""}`,
-              mainEntity: {
-                "@type": "ItemList",
-                itemListOrder: "https://schema.org/ItemListOrderAscending",
-                numberOfItems: 5,
-                itemListElement: [
-                  {
-                    "@type": "ListItem",
-                    position: 1,
-                    url: `${baseUrl}/product/1`,
-                    name: "Elegant Gold-Plated Necklace",
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 2,
-                    url: `${baseUrl}/product/2`,
-                    name: "Silver Drop Earrings",
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 3,
-                    url: `${baseUrl}/product/3`,
-                    name: "Pearl Bracelet Gift Set",
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 4,
-                    url: `${baseUrl}/product/4`,
-                    name: "Classic Pendant Chain",
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 5,
-                    url: `${baseUrl}/product/5`,
-                    name: "Rose Gold Stud Earrings",
-                  },
-                ],
-              },
-            }),
-          }}
-        />
-
-        {/* ✅ Schema.org JSON-LD — ItemList (for crawler fallback) */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: itemListJson }}
         />
       </Head>
 
-      {/* 🛍️ Hero Header Section */}
       <section className="bg-gradient-to-b from-gray-50 to-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-12 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-3xl sm:text-4xl font-serif font-bold mb-3"
+            className="text-3xl sm:text-4xl font-serif font-bold"
           >
             {heading}
           </motion.h1>
           <p className="text-gray-500 text-sm sm:text-base max-w-2xl mx-auto">
-            Discover timeless designs and modern elegance, crafted to elevate your everyday style.
+            Discover timeless designs and modern elegance.
           </p>
         </div>
       </section>
 
-      {/* 🏷️ Category Pills */}
+      {/* Category Filter Row */}
       <div className="max-w-7xl mx-auto px-4 py-6 flex gap-3 flex-wrap justify-center border-b border-gray-100">
         {categories.map((cat) => {
           const isActive = selectedCategory === cat;
-          const href = cat === "all" ? "/shop" : `/shop?cat=${encodeURIComponent(cat)}`;
           return (
             <Link
               key={cat}
-              href={href}
-              className={`px-5 py-2.5 rounded-full text-sm border transition font-medium tracking-wide ${
+              href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
+              shallow
+              className={`px-5 py-2.5 rounded-full text-sm border transition font-medium ${
                 isActive
                   ? "bg-black text-white border-black shadow-md"
                   : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
               }`}
-              shallow
             >
-              {cat[0].toUpperCase() + cat.slice(1)}
+              {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </Link>
           );
         })}
       </div>
 
-      {/* 🧭 Filter & Sort Bar */}
-      <div className="sticky top-[64px] bg-white/80 backdrop-blur-md border-b border-gray-100 z-30">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
-          {/* Filter Toggle (Mobile) */}
+      {/* Filter and Sort */}
+      <div className="sticky top-[64px] bg-white/80 backdrop-blur-md border-b z-30">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center gap-4">
           <button
-            onClick={() => setShowFilters((prev) => !prev)}
-            className="lg:hidden flex items-center gap-2 border px-4 py-2 rounded-md text-sm bg-gray-50 hover:bg-gray-100 transition"
+            onClick={() => setShowFilters((p) => !p)}
+            className="lg:hidden flex items-center gap-2 border px-4 py-2 rounded-md text-sm"
           >
             <SlidersHorizontal size={16} />
             {showFilters ? "Hide Filters" : "Show Filters"}
           </button>
 
-          {/* Price Filter */}
           <div
-            className={`flex gap-3 items-center transition-all ${
-              showFilters ? "block" : "hidden lg:flex"
-            }`}
+            className={`${showFilters ? "block" : "hidden lg:flex"} items-center gap-3`}
           >
-            <label className="text-sm font-medium text-gray-600">Price:</label>
+            <label className="text-sm font-medium">Price:</label>
             <select
               value={`${priceRange[0]}-${priceRange[1]}`}
               onChange={handlePriceChange}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className="border px-3 py-2 text-sm rounded-md"
             >
               <option value="0-10000">All Prices</option>
               <option value="0-500">Under ₹500</option>
@@ -228,12 +170,11 @@ export default function ShopPage() {
             </select>
           </div>
 
-          {/* Sort Dropdown */}
           <div className="ml-auto">
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className="border px-3 py-2 text-sm rounded-md"
             >
               <option value="">Sort By</option>
               <option value="popular">Most Popular</option>
@@ -245,7 +186,7 @@ export default function ShopPage() {
         </div>
       </div>
 
-      {/* 🛒 Product Grid */}
+      {/* Product Grid */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -257,8 +198,32 @@ export default function ShopPage() {
           sort={sort}
           minPrice={priceRange[0]}
           maxPrice={priceRange[1]}
+          initialProducts={initialProducts}
         />
       </motion.div>
     </>
   );
+}
+
+/* ✅ Firestore SSR Fetch */
+export async function getServerSideProps() {
+  try {
+    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+
+    const products = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return {
+      props: {
+        initialProducts: products,
+        baseUrlFromServer: process.env.NEXT_PUBLIC_BASE_URL || "",
+      },
+    };
+  } catch (err) {
+    console.error("❌ SSR Error (Shop):", err);
+    return { props: { initialProducts: [], baseUrlFromServer: "" } };
+  }
 }
