@@ -1,11 +1,15 @@
+// pages/api/verify-razorpay.js
 import crypto from "crypto";
-import { adminDb } from "../../lib/firebaseAdmin";
 import nodemailer from "nodemailer";
+import { admin, adminDb } from "../../lib/firebaseAdmin";
 import { generateInvoiceBuffer } from "../../lib/invoice";
 import { zoneFromPincode, etaRange } from "@/lib/logistics";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   try {
     const {
@@ -19,8 +23,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing Razorpay fields" });
     }
 
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) {
+      return res.status(500).json({ error: "Razorpay secret missing on server" });
+    }
+
+    // Verify HMAC signature
     const expected = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", keySecret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
@@ -28,9 +38,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid signature" });
     }
 
+    // Extract payload (items, total, address, user)
     const { items = [], total = 0, address = null, user = {} } = orderPayload || {};
     const userEmail = user?.email || null;
 
+    // Logistics ETA (optional)
     let logistics = null;
     if (address?.pincode) {
       const zone = zoneFromPincode(address.pincode);
@@ -38,6 +50,9 @@ export default async function handler(req, res) {
       logistics = { zone, eta: { start: eta.start, end: eta.end } };
     }
 
+    const nowTS = admin.firestore.FieldValue.serverTimestamp();
+
+    // Compose order object
     const orderDoc = {
       userId: userEmail,
       customer: address,
@@ -48,17 +63,22 @@ export default async function handler(req, res) {
         type: "RAZORPAY",
         paymentId: razorpay_payment_id,
         orderId: razorpay_order_id,
+        signature: razorpay_signature,
       },
       gateway: "razorpay",
-      statusTimestamps: { Paid: adminDb.FieldValue.serverTimestamp() },
+      statusTimestamps: {
+        Paid: nowTS,
+      },
       logistics,
-      createdAt: adminDb.FieldValue.serverTimestamp(),
+      createdAt: nowTS,
+      updatedAt: nowTS,
     };
 
+    // Create new order (you can extend to "update existing" if you pass an orderId)
     const docRef = await adminDb.collection("orders").add(orderDoc);
     const orderId = docRef.id;
 
-    // 📨 Email invoice if SMTP configured
+    // Optional: send invoice email if SMTP is configured
     const smtpReady =
       process.env.SMTP_HOST &&
       process.env.SMTP_PORT &&
@@ -73,7 +93,7 @@ export default async function handler(req, res) {
         const transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST,
           port: Number(process.env.SMTP_PORT),
-          secure: false,
+          secure: Number(process.env.SMTP_PORT) === 465, // auto secure on 465
           auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
@@ -98,10 +118,11 @@ export default async function handler(req, res) {
         });
       } catch (e) {
         console.warn("Invoice email failed:", e);
+        // Do not block success response
       }
     }
 
-    return res.status(200).json({ ok: true, orderId });
+    return res.status(200).json({ success: true, orderId });
   } catch (err) {
     console.error("Verify/save error:", err);
     return res.status(500).json({ error: "Server error verifying payment" });

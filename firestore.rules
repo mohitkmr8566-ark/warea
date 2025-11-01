@@ -135,12 +135,34 @@ service cloud.firestore {
 
     /* --------------------------- ORDERS --------------------------- */
     match /orders/{orderId} {
-      allow read, write: if isAdmin();
-      allow read: if isSignedIn() && isOwner(resource.data.userId);
-      allow create: if isValidOrder();
-      allow update, delete: if false;
-    }
+  // ✅ Only Admins OR the user who placed order can read
+  allow read: if isAdmin() || (isSignedIn() && isOwner(resource.data.userId));
 
+  // ✅ Users create orders themselves
+  allow create: if isValidOrder();
+
+  // ⛔ No user or admin should overwrite order documents directly (handled by backend)
+  allow update, delete: if false;
+
+  /* ---------------- REPLACEMENTS (SUBCOLLECTION) ---------------- */
+  match /replacements/{replaceId} {
+    // ✅ Owner of order OR admin can read
+    allow read: if isAdmin()
+                || (isSignedIn() && isOwner(resource.data.userId));
+
+    // ✅ User may create replacement request *only for their own order*
+    allow create: if isSignedIn()
+                  && isOwner(resource.data.userId)             // ✅ Now checks order's owner correctly
+                  && request.resource.data.keys().hasAll(['reason', 'status', 'createdAt', 'userId'])
+                  && request.resource.data.userId == request.auth.token.email;
+
+    // ✅ Only Admin can update replacement request (approve/reject)
+    allow update: if isAdmin();
+
+    // ✅ Only Admin can delete (if needed)
+    allow delete: if isAdmin();
+  }
+}
     /* --------------------------- USERS --------------------------- */
     match /users/{userEmail} {
       allow read, create, update: if isOwner(userEmail);
