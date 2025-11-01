@@ -8,8 +8,9 @@ import { useAuth } from "@/store/AuthContext";
 import { isAdmin } from "@/lib/admin";
 import AdminLayout from "@/components/admin/AdminLayout";
 import toast from "react-hot-toast";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+// ❌ Removed heavy static imports:
+// import jsPDF from "jspdf";
+// import "jspdf-autotable";
 
 export default function AdminOrderDetails() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function AdminOrderDetails() {
     );
 
     return () => unsub();
-  }, [id, user]);
+  }, [id, user, router]);
 
   const handleStatusChange = async (newStatus) => {
     if (!isAdmin(user)) return toast.error("Unauthorized");
@@ -71,77 +72,90 @@ export default function AdminOrderDetails() {
     }
   };
 
-  // 🧾 Generate PDF Invoice
-  const generateInvoice = () => {
-    if (!order) return;
+  // 🧾 Generate PDF Invoice (lazy-load heavy libs)
+  const generateInvoice = async () => {
+    try {
+      if (!order) return;
 
-    const docPDF = new jsPDF("p", "mm", "a4");
-    const pageWidth = docPDF.internal.pageSize.getWidth();
-
-    const img = new Image();
-    img.src = "/logo.png"; // logo from public folder
-    img.onload = () => {
-      docPDF.addImage(img, "PNG", 15, 12, 25, 25);
-      docPDF.setFont("helvetica", "bold");
-      docPDF.setFontSize(20);
-      docPDF.text("WAREA JEWELLERY", 45, 25);
-      docPDF.setFontSize(11);
-      docPDF.setTextColor(100);
-      docPDF.text("Official Invoice", 45, 32);
-
-      docPDF.setTextColor(0);
-      docPDF.setFontSize(12);
-      docPDF.text(`Invoice #: ${order.id}`, 15, 50);
-      docPDF.text(
-        `Date: ${
-          order.createdAt?.toDate
-            ? order.createdAt.toDate().toLocaleDateString()
-            : "—"
-        }`,
-        pageWidth - 70,
-        50
-      );
-
-      docPDF.setFont("helvetica", "bold");
-      docPDF.text("Bill To:", 15, 65);
-      docPDF.setFont("helvetica", "normal");
-      docPDF.text(order.customer?.name || "Customer", 15, 72);
-      docPDF.text(order.userId || "", 15, 78);
-
-      const tableBody = (order.items || []).map((item, i) => [
-        i + 1,
-        item.name || "Product",
-        item.qty || 1,
-        `₹${item.price}`,
-        `₹${(item.qty || 1) * (item.price || 0)}`,
+      // ✅ Lazy load jsPDF and autotable only on click
+      const [{ default: jsPDF }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
       ]);
 
-      docPDF.autoTable({
-        startY: 90,
-        head: [["#", "Product", "Qty", "Price", "Total"]],
-        body: tableBody,
-        theme: "grid",
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [22, 78, 99], textColor: 255 },
-      });
+      const docPDF = new jsPDF("p", "mm", "a4");
+      const pageWidth = docPDF.internal.pageSize.getWidth();
 
-      const finalY = docPDF.lastAutoTable.finalY + 10;
-      docPDF.setFont("helvetica", "bold");
-      docPDF.text(`Grand Total: ₹${order.total}`, pageWidth - 70, finalY);
+      const img = new Image();
+      img.src = "/logo.png"; // logo from public folder
 
-      docPDF.setFont("helvetica", "italic");
-      docPDF.setFontSize(10);
-      docPDF.text(
-        "Thank you for shopping with Warea! Visit us again ❤️",
-        15,
-        finalY + 20
-      );
+      img.onload = () => {
+        docPDF.addImage(img, "PNG", 15, 12, 25, 25);
+        docPDF.setFont("helvetica", "bold");
+        docPDF.setFontSize(20);
+        docPDF.text("WAREA JEWELLERY", 45, 25);
+        docPDF.setFontSize(11);
+        docPDF.setTextColor(100);
+        docPDF.text("Official Invoice", 45, 32);
 
-      docPDF.save(`Warea_Invoice_${order.id}.pdf`);
-    };
-    img.onerror = () => {
-      toast.error("Logo could not be loaded. Ensure /public/logo.png exists.");
-    };
+        docPDF.setTextColor(0);
+        docPDF.setFontSize(12);
+        docPDF.text(`Invoice #: ${order.id}`, 15, 50);
+        docPDF.text(
+          `Date: ${
+            order.createdAt?.toDate
+              ? order.createdAt.toDate().toLocaleDateString()
+              : "—"
+          }`,
+          pageWidth - 70,
+          50
+        );
+
+        docPDF.setFont("helvetica", "bold");
+        docPDF.text("Bill To:", 15, 65);
+        docPDF.setFont("helvetica", "normal");
+        docPDF.text(order.customer?.name || "Customer", 15, 72);
+        docPDF.text(order.userId || "", 15, 78);
+
+        const tableBody = (order.items || []).map((item, i) => [
+          i + 1,
+          item.name || "Product",
+          item.qty || 1,
+          `₹${item.price}`,
+          `₹${(item.qty || 1) * (item.price || 0)}`,
+        ]);
+
+        docPDF.autoTable({
+          startY: 90,
+          head: [["#", "Product", "Qty", "Price", "Total"]],
+          body: tableBody,
+          theme: "grid",
+          styles: { fontSize: 10 },
+          headStyles: { fillColor: [22, 78, 99], textColor: 255 },
+        });
+
+        const finalY = docPDF.lastAutoTable.finalY + 10;
+        docPDF.setFont("helvetica", "bold");
+        docPDF.text(`Grand Total: ₹${order.total}`, pageWidth - 70, finalY);
+
+        docPDF.setFont("helvetica", "italic");
+        docPDF.setFontSize(10);
+        docPDF.text(
+          "Thank you for shopping with Warea! Visit us again ❤️",
+          15,
+          finalY + 20
+        );
+
+        docPDF.save(`Warea_Invoice_${order.id}.pdf`);
+      };
+
+      img.onerror = () => {
+        toast.error("Logo could not be loaded. Ensure /public/logo.png exists.");
+      };
+    } catch (err) {
+      console.error("Invoice generation failed:", err);
+      toast.error("Failed to generate invoice");
+    }
   };
 
   if (!user || !isAdmin(user)) {
@@ -254,7 +268,7 @@ export default function AdminOrderDetails() {
                     ))}
                 </ul>
               ) : (
-                <p className="text-gray-500 italic">No status changes recorded.</p>
+                <p className="text-sm text-gray-500 italic">No status changes recorded.</p>
               )}
             </div>
           </>

@@ -14,6 +14,7 @@
     "cleanup:products": "node --env-file=.env.local scripts/cleanupOldProductFields.js"
   },
   "dependencies": {
+    "@next/bundle-analyzer": "^16.0.1",
     "@next/font": "^14.2.15",
     "@sendgrid/mail": "^8.1.6",
     "@vercel/speed-insights": "^1.2.0",

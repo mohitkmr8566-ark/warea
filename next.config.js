@@ -1,3 +1,10 @@
+// ✅ Use ES module import instead of require()
+import bundleAnalyzer from '@next/bundle-analyzer'
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+})
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -5,7 +12,6 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
 
-  // ✅ Image Optimization (automatic WebP & AVIF for best LCP score)
   images: {
     domains: ["res.cloudinary.com"],
     formats: ["image/avif", "image/webp"],
@@ -36,4 +42,5 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// ✅ Export using ES Module syntax
+export default withBundleAnalyzer(nextConfig);

@@ -1,5 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+// pages/search.js
+
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import SearchBar from "../components/SearchBar";
@@ -10,14 +13,27 @@ import { Search } from "lucide-react";
 const popularTags = ["Earrings", "Necklace", "Rings", "Gold", "Bridal"];
 const SSR_ENABLED = process.env.NEXT_PUBLIC_SSR_SEARCH === "true";
 
+const debounce = (fn, delay = 400) => {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+};
+
 /* ==========================
-   CLIENT-SIDE VERSION
+   CLIENT-SIDE VERSION (fallback when SSR is disabled)
 ========================== */
 function ClientSearch() {
-  const [queryText, setQueryText] = useState("");
+  const router = useRouter();
+  const initialQuery = router.query.q ? String(router.query.q) : "";
+
+  const [queryText, setQueryText] = useState(initialQuery);
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [baseUrl, setBaseUrl] = useState("");
 
+  // Detect domain for SEO links
   useEffect(() => {
     const url =
       process.env.NEXT_PUBLIC_BASE_URL ||
@@ -25,19 +41,45 @@ function ClientSearch() {
     setBaseUrl(url);
   }, []);
 
+  // Fetch once
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        setLoading(true);
         const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
         const snap = await getDocs(q);
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const list = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
         setProducts(list);
       } catch (err) {
         console.error("🔥 Search fetch error:", err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchProducts();
   }, []);
+
+  // Sync search to URL (SEO-friendly)
+  const syncUrl = useCallback(
+    debounce((value) => {
+      if (value.trim()) {
+        router.push(`/search?q=${encodeURIComponent(value)}`, undefined, {
+          shallow: true,
+        });
+      } else {
+        router.push(`/search`, undefined, { shallow: true });
+      }
+    }, 500),
+    [router]
+  );
+
+  const handleQueryChange = (value) => {
+    setQueryText(value);
+    syncUrl(value);
+  };
 
   const filtered = useMemo(() => {
     const q = (queryText || "").trim().toLowerCase();
@@ -50,22 +92,26 @@ function ClientSearch() {
     });
   }, [queryText, products]);
 
-  const handleTagClick = (tag) => setQueryText(tag);
+  const handleTagClick = (tag) => handleQueryChange(tag);
   const hasSearched = queryText.trim().length > 0;
 
   const pageTitle = hasSearched
     ? `Search results for “${queryText}” | Warea`
     : "Search Jewellery | Warea";
+
   const pageDesc = hasSearched
-    ? `Discover ${filtered.length} result${filtered.length !== 1 ? "s" : ""} for “${queryText}” at Warea. Explore handcrafted, anti-tarnish jewellery designed for elegance.`
-    : "Find your perfect jewellery at Warea. Search by name, metal, or design and explore our beautiful anti-tarnish collections.";
+    ? `Discover ${filtered.length} result${filtered.length !== 1 ? "s" : ""} for “${queryText}” at Warea. Explore handcrafted jewellery.`
+    : "Find your perfect jewellery at Warea. Search by name, metal, or design.";
 
   const searchSchema = {
     "@context": "https://schema.org",
     "@type": "SearchResultsPage",
     name: pageTitle,
     description: pageDesc,
-    url: typeof window !== "undefined" ? window.location.href : `${baseUrl}/search`,
+    url:
+      typeof window !== "undefined"
+        ? window.location.href
+        : `${baseUrl}/search`,
   };
 
   const itemListSchema =
@@ -73,7 +119,6 @@ function ClientSearch() {
       ? {
           "@context": "https://schema.org",
           "@type": "ItemList",
-          name: `Search results for “${queryText}”`,
           itemListOrder: "https://schema.org/ItemListOrderAscending",
           numberOfItems: filtered.length,
           itemListElement: filtered.slice(0, 20).map((p, index) => ({
@@ -88,119 +133,124 @@ function ClientSearch() {
   return (
     <SearchLayout
       queryText={queryText}
-      setQueryText={setQueryText}
+      setQueryText={handleQueryChange}
       filtered={filtered}
       hasSearched={hasSearched}
       pageTitle={pageTitle}
       pageDesc={pageDesc}
       searchSchema={searchSchema}
       itemListSchema={itemListSchema}
+      loading={loading}
       handleTagClick={handleTagClick}
     />
   );
 }
 
 /* ==========================
-   SSR VERSION (Production)
+   SSR-ENABLED VERSION (when SSR_ENABLED === true)
 ========================== */
-export async function getServerSideProps(context) {
-  if (!SSR_ENABLED) {
-    return { props: { ssrDisabled: true } };
-  }
+function SSRSearch({ initialProducts, initialQuery, baseUrlFromServer }) {
+  const router = useRouter();
 
-  const queryText = context.query.q ? context.query.q.toLowerCase() : "";
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://warea.in";
+  const [queryText, setQueryText] = useState(initialQuery || "");
+  const [baseUrl, setBaseUrl] = useState(baseUrlFromServer || "");
+  // We already have products on first paint; no loading spinner needed for SSR
+  const products = initialProducts || [];
 
-  try {
-    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    const products = snap.docs.map((d) => {
-      const data = d.data();
-      return {
-        id: d.id,
-        ...data,
-        createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : null,
-        updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : null,
-        images:
-          data.images?.map((i) =>
-            typeof i === "string" ? { url: i } : i
-          ) || (data.image_url ? [{ url: data.image_url }] : []),
-      };
+  useEffect(() => {
+    if (!baseUrl) {
+      const url =
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        (typeof window !== "undefined" ? window.location.origin : "");
+      setBaseUrl(url);
+    }
+  }, [baseUrl]);
+
+  const syncUrl = useCallback(
+    debounce((value) => {
+      if (value.trim()) {
+        router.push(`/search?q=${encodeURIComponent(value)}`, undefined, {
+          shallow: true,
+        });
+      } else {
+        router.push(`/search`, undefined, { shallow: true });
+      }
+    }, 500),
+    [router]
+  );
+
+  const handleQueryChange = (value) => {
+    setQueryText(value);
+    syncUrl(value);
+  };
+
+  const filtered = useMemo(() => {
+    const q = (queryText || "").trim().toLowerCase();
+    if (!q) return [];
+    return products.filter((p) => {
+      const name = (p.title || "").toLowerCase();
+      const desc = (p.description || "").toLowerCase();
+      const category = (p.category || "").toLowerCase();
+      return name.includes(q) || desc.includes(q) || category.includes(q);
     });
+  }, [queryText, products]);
 
-    const filtered = queryText
-      ? products.filter((p) => {
-          const name = (p.title || "").toLowerCase();
-          const desc = (p.description || "").toLowerCase();
-          const category = (p.category || "").toLowerCase();
-          return (
-            name.includes(queryText) ||
-            desc.includes(queryText) ||
-            category.includes(queryText)
-          );
-        })
-      : [];
+  const handleTagClick = (tag) => handleQueryChange(tag);
+  const hasSearched = queryText.trim().length > 0;
 
-    const pageTitle = queryText
-      ? `Search results for “${queryText}” | Warea`
-      : "Search Jewellery | Warea";
-    const pageDesc = queryText
-      ? `Discover ${filtered.length} result${filtered.length !== 1 ? "s" : ""} for “${queryText}” at Warea. Explore handcrafted, anti-tarnish jewellery designed for elegance.`
-      : "Find your perfect jewellery at Warea. Search by name, metal, or design and explore our beautiful anti-tarnish collections.";
+  const pageTitle = hasSearched
+    ? `Search results for “${queryText}” | Warea`
+    : "Search Jewellery | Warea";
 
-    const searchSchema = {
-      "@context": "https://schema.org",
-      "@type": "SearchResultsPage",
-      name: pageTitle,
-      description: pageDesc,
-      url: `${baseUrl}/search${queryText ? `?q=${encodeURIComponent(queryText)}` : ""}`,
-    };
+  const pageDesc = hasSearched
+    ? `Discover ${filtered.length} result${filtered.length !== 1 ? "s" : ""} for “${queryText}” at Warea. Explore handcrafted jewellery.`
+    : "Find your perfect jewellery at Warea. Search by name, metal, or design.";
 
-    const itemListSchema =
-      queryText && filtered.length > 0
-        ? {
-            "@context": "https://schema.org",
-            "@type": "ItemList",
-            name: `Search results for “${queryText}”`,
-            itemListOrder: "https://schema.org/ItemListOrderAscending",
-            numberOfItems: filtered.length,
-            itemListElement: filtered.map((p, i) => ({
-              "@type": "ListItem",
-              position: i + 1,
-              url: `${baseUrl}/product/${p.id}`,
-              name: p.title || "Jewellery Item",
-            })),
-          }
-        : null;
+  const searchSchema = {
+    "@context": "https://schema.org",
+    "@type": "SearchResultsPage",
+    name: pageTitle,
+    description: pageDesc,
+    url:
+      typeof window !== "undefined"
+        ? window.location.href
+        : `${baseUrl}/search`,
+  };
 
-    return {
-      props: {
-        ssrDisabled: false,
-        products,
-        queryText,
-        pageTitle,
-        pageDesc,
-        searchSchema,
-        itemListSchema,
-      },
-    };
-  } catch (err) {
-    console.error("❌ SSR Search Error:", err);
-    return {
-      props: {
-        ssrDisabled: false,
-        products: [],
-        queryText,
-        pageTitle: "Search Jewellery | Warea",
-        pageDesc:
-          "Find your perfect jewellery at Warea. Search by name, metal, or design and explore our beautiful anti-tarnish collections.",
-      },
-    };
-  }
+  const itemListSchema =
+    hasSearched && filtered.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          itemListOrder: "https://schema.org/ItemListOrderAscending",
+          numberOfItems: filtered.length,
+          itemListElement: filtered.slice(0, 20).map((p, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            url: `${baseUrl}/product/${p.id}`,
+            name: p.title || "Jewellery Item",
+          })),
+        }
+      : null;
+
+  return (
+    <SearchLayout
+      queryText={queryText}
+      setQueryText={handleQueryChange}
+      filtered={filtered}
+      hasSearched={hasSearched}
+      pageTitle={pageTitle}
+      pageDesc={pageDesc}
+      searchSchema={searchSchema}
+      itemListSchema={itemListSchema}
+      loading={false}
+      handleTagClick={handleTagClick}
+    />
+  );
 }
 
 /* ==========================
-   Shared Layout Component
+   Shared UILayout (unchanged visually)
 ========================== */
 function SearchLayout({
   queryText,
@@ -211,6 +261,7 @@ function SearchLayout({
   pageDesc,
   searchSchema,
   itemListSchema,
+  loading,
   handleTagClick,
 }) {
   return (
@@ -218,10 +269,6 @@ function SearchLayout({
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDesc} />
-        <meta name="twitter:card" content="summary_large_image" />
-
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(searchSchema) }}
@@ -239,16 +286,14 @@ function SearchLayout({
           <div className="page-container py-10 text-center">
             <div className="flex justify-center mb-4">
               <Search className="text-gray-400 mr-2 mt-1" size={22} />
-              <h1 className="text-3xl font-bold tracking-tight">
-                Find Your Perfect Jewellery
-              </h1>
+              <h1 className="text-3xl font-bold">Find Your Perfect Jewellery</h1>
             </div>
 
             <div className="max-w-2xl mx-auto mt-6">
               <SearchBar
                 value={queryText}
                 onChange={setQueryText}
-                placeholder="Search by name, material, design or category..."
+                placeholder="Search by name, material or category..."
               />
             </div>
 
@@ -257,7 +302,7 @@ function SearchLayout({
                 <button
                   key={tag}
                   onClick={() => handleTagClick(tag)}
-                  className="px-4 py-1.5 rounded-full text-sm border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+                  className="px-4 py-1.5 rounded-full text-sm border text-gray-700 hover:bg-gray-100"
                 >
                   {tag}
                 </button>
@@ -273,20 +318,17 @@ function SearchLayout({
         </div>
 
         <div className="page-container py-14">
-          {!hasSearched ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center text-gray-500">
+          {loading ? (
+            <p className="text-center text-gray-500">Loading products...</p>
+          ) : !hasSearched ? (
+            <div className="text-center text-gray-500 py-20">
               <Search size={50} className="mb-4 opacity-40" />
-              <p className="text-lg font-medium">
-                Start typing to explore our collections ✨
-              </p>
-              <p className="text-sm opacity-70 mt-1">
-                Try popular searches like “Earrings” or “Necklace”.
-              </p>
+              <p className="text-lg">Start typing to search our collections ✨</p>
             </div>
           ) : filtered.length > 0 ? (
             <>
               <p className="text-sm text-gray-500 mb-4">
-                {filtered.length} product{filtered.length !== 1 ? "s" : ""} found
+                {filtered.length} item{filtered.length !== 1 ? "s" : ""} found
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
                 <AnimatePresence>
@@ -296,23 +338,18 @@ function SearchLayout({
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 20 }}
-                      transition={{ duration: 0.35 }}
+                      transition={{ duration: 0.3 }}
                     >
-                      <div className="scale-90 sm:scale-95 md:scale-90 lg:scale-90 hover:scale-95 transition-transform duration-300">
-                        <div className="[&>div>div:first-child]:h-[220px] sm:[&>div>div:first-child]:h-[250px] md:[&>div>div:first-child]:h-[270px]">
-                          <ProductCard product={p} />
-                        </div>
-                      </div>
+                      <ProductCard product={p} />
                     </motion.div>
                   ))}
                 </AnimatePresence>
               </div>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center text-gray-500">
+            <div className="text-center text-gray-500 py-20">
               <Search size={42} className="mb-3 opacity-40" />
-              <p className="text-lg font-medium">No products match your search.</p>
-              <p className="text-sm opacity-70 mt-1">Try a different keyword or tag above.</p>
+              <p>No products match this search.</p>
             </div>
           )}
         </div>
@@ -321,6 +358,56 @@ function SearchLayout({
   );
 }
 
+/* ==========================
+   Smart default export wrapper
+========================== */
 export default function Wrapper(props) {
-  return props.ssrDisabled ? <ClientSearch /> : <SearchLayout {...props} />;
+  if (props.ssrDisabled) return <ClientSearch />;
+  return (
+    <SSRSearch
+      initialProducts={props.initialProducts}
+      initialQuery={props.initialQuery}
+      baseUrlFromServer={props.baseUrlFromServer}
+    />
+  );
+}
+
+/* ==========================
+   Firestore SSR
+========================== */
+export async function getServerSideProps(context) {
+  if (!SSR_ENABLED) {
+    return { props: { ssrDisabled: true } };
+  }
+
+  try {
+    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+    const products = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
+
+    const initialQuery = context.query.q ? String(context.query.q) : "";
+    const baseUrlFromServer = process.env.NEXT_PUBLIC_BASE_URL || "";
+
+    return {
+      props: {
+        ssrDisabled: false,
+        initialProducts: products,
+        initialQuery,
+        baseUrlFromServer,
+      },
+    };
+  } catch (err) {
+    console.error("❌ SSR Search Error:", err);
+    return {
+      props: {
+        ssrDisabled: false,
+        initialProducts: [],
+        initialQuery: context.query.q ? String(context.query.q) : "",
+        baseUrlFromServer: process.env.NEXT_PUBLIC_BASE_URL || "",
+      },
+    };
+  }
 }
