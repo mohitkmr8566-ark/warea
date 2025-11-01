@@ -1,6 +1,5 @@
-"use client";
 
-import Head from "next/head";
+import Head from "next/head"; // ✅ Keep SSR-friendly
 import Hero from "@/components/Hero";
 import CategorySection from "@/components/CategorySection";
 import ProductGrid from "@/components/ProductGrid";
@@ -13,6 +12,7 @@ import {
   getWebsiteSchema,
   getBreadcrumbSchema,
   getProductSchemas,
+  getSiteNavSchema,   // ✅ add this line
 } from "@/lib/seoSchemas";
 
 export default function HomePage() {
@@ -51,12 +51,47 @@ export default function HomePage() {
     getOrganizationSchema(baseUrl),
     getWebsiteSchema(baseUrl),
     getBreadcrumbSchema(baseUrl),
+    getSiteNavSchema(baseUrl), // ⬅ add this
+
     ...getProductSchemas(baseUrl, featuredProducts),
   ];
 
   return (
     <>
       <Head>
+        {/* Networking hints */}
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+
+        {/* Preload hero image if it's used in the first viewport (swap path if different) */}
+        <link
+          rel="preload"
+          as="image"
+          href="/hero-banner.webp"
+          imagesrcset="/hero-banner.webp"
+          imageSizes="100vw"
+          type="image/webp"
+        />
+
+        {/* Preload primary font (adjust path/name if needed) */}
+        <link
+          rel="preload"
+          as="font"
+          href="/fonts/serif.woff2"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+
+        {/* Basic Meta Tags */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+        {/* ⬇ Nice extras */}
+        <meta name="robots" content="index,follow,max-image-preview:large" />
+        <meta name="theme-color" content="#111111" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="alternate" hrefLang="x-default" href={baseUrl} />
+        <link rel="alternate" hrefLang="en-in" href={baseUrl} />
+
         {/* ✅ Meta + SEO Tags */}
         <title>
           Warea Jewellery | Handcrafted Gold & Silver Jewellery Online in India

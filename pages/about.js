@@ -1,7 +1,22 @@
 import Head from "next/head";
+import { getBaseUrl, getOrganizationSchema } from "@/lib/seoSchemas";
 
 export default function AboutPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://warea.in";
+  const baseUrl = getBaseUrl();
+
+  // ✅ JSON-LD Schema for About Page
+  const aboutSchema = {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    name: "About Warea Creations",
+    url: `${baseUrl}/about`,
+    mainEntity: {
+      "@type": "Organization",
+      name: "Warea Creations",
+      url: baseUrl,
+      logo: `${baseUrl}/logo.png`,
+    },
+  };
 
   return (
     <>
@@ -9,21 +24,34 @@ export default function AboutPage() {
         <title>About Warea Creations | Elegant Jewellery for Every Occasion</title>
         <meta
           name="description"
-          content="Learn about Warea Creations — a jewellery brand that blends craftsmanship, design, and elegance. Discover our story, mission, and ethical commitment."
+          content="Discover the story of Warea Creations — a brand blending craftsmanship, minimal design, and timeless jewellery. Learn about our mission, values, and journey."
         />
         <link rel="canonical" href={`${baseUrl}/about`} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
         <meta property="og:title" content="About Warea Creations" />
         <meta
           property="og:description"
-          content="Learn about Warea Creations — timeless elegance and sustainable craftsmanship."
+          content="Timeless handcrafted jewellery made with passion and precision."
         />
         <meta property="og:image" content={`${baseUrl}/logo.png`} />
         <meta property="og:url" content={`${baseUrl}/about`} />
+
+        {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="About Warea Creations" />
         <meta
           name="twitter:description"
-          content="Elegant handcrafted jewellery made with love."
+          content="Explore Warea's journey in creating elegant and ethical jewellery."
+        />
+
+        {/* ✅ Inject JSON-LD Schema */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([aboutSchema, getOrganizationSchema(baseUrl)]),
+          }}
         />
       </Head>
 
@@ -33,10 +61,9 @@ export default function AboutPage() {
         </h1>
 
         <p className="text-lg text-gray-700 leading-relaxed mb-6 text-center">
-          At <span className="font-semibold">Warea</span>, we believe jewellery
-          is more than an accessory — it's a reflection of who you are. Our
-          mission is to craft timeless, elegant pieces that complement every
-          occasion.
+          At <span className="font-semibold">Warea</span>, jewellery isn’t just an accessory —
+          it’s a memory, a feeling, a personal story. We are passionate about creating
+          handcrafted pieces that reflect elegance, emotion, and individuality.
         </p>
 
         <div className="grid md:grid-cols-2 gap-12 mt-12">
@@ -44,10 +71,9 @@ export default function AboutPage() {
           <div>
             <h2 className="text-2xl font-semibold mb-4">Our Story</h2>
             <p className="text-gray-600 leading-relaxed">
-              Founded with a passion for minimal design, Warea started as a
-              small studio dedicated to making jewellery that feels personal,
-              modern, and lasting. Today, we continue to focus on quality
-              craftsmanship, sustainable sourcing, and customer delight.
+              Warea began as a small design studio with a vision — to bring minimal yet
+              luxurious jewellery to everyday life. What started as handcrafted designs is now
+              loved by thousands for its charm, quality, and timeless appeal.
             </p>
           </div>
 
@@ -55,9 +81,9 @@ export default function AboutPage() {
           <div>
             <h2 className="text-2xl font-semibold mb-4">Our Mission</h2>
             <p className="text-gray-600 leading-relaxed">
-              To inspire confidence and celebrate individuality through
-              jewellery that is ethically made, thoughtfully designed, and
-              accessible for everyone.
+              To make premium-quality, skin-friendly, and affordable jewellery accessible to
+              everyone, while ensuring ethical sourcing, sustainable packaging, and loving
+              craftsmanship.
             </p>
           </div>
         </div>

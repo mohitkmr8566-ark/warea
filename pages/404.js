@@ -2,7 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 
 export default function Custom404() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://warea.in";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://warea.vercel.app";
   return (
     <>
       <Head>

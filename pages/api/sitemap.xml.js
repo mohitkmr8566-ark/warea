@@ -2,7 +2,9 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 
 export default async function handler(req, res) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://warea.in";
+  const baseUrl =
+  process.env.NEXT_PUBLIC_BASE_URL || "https://warea.vercel.app";
+
   const products = [];
 
   try {

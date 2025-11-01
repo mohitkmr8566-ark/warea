@@ -1,15 +1,23 @@
-// components/orders/InvoiceButton.jsx
+// ✅ components/orders/InvoiceButton.jsx
+"use client";
 import { useState } from "react";
 
-export default function InvoiceButton({ orderId, useClientPDF = false }) {
+export default function InvoiceButton({
+  orderId,
+  useClientPDF = false,   // Optional: still supports client-side PDF if ever needed
+  variant = "primary",     // "primary" or "secondary" button style
+  showIcon = true,         // Toggle 🧾 emoji
+  label = "Download Invoice", // Custom label override
+}) {
   const [loading, setLoading] = useState(false);
 
-  // ✅ Method 1: Server-generated PDF (already in your project)
+  // ✅ Method 1: Server-generated PDF
   const downloadServerInvoice = () => {
+    if (!orderId) return;
     window.open(`/api/invoice/${orderId}`, "_blank");
   };
 
-  // ✅ Method 2: Client-side PDF (Lazy-load jsPDF + html2canvas)
+  // ✅ Method 2: Client-side PDF (optional, seldom used now)
   const downloadClientInvoice = async () => {
     setLoading(true);
     try {
@@ -35,13 +43,27 @@ export default function InvoiceButton({ orderId, useClientPDF = false }) {
     }
   };
 
+  const handleClick = useClientPDF ? downloadClientInvoice : downloadServerInvoice;
+
+  // ✅ Button style presets
+  const baseClasses =
+    "inline-flex items-center justify-center px-4 py-2 text-sm font-medium transition rounded-full";
+  const variants = {
+    primary: "bg-yellow-500 hover:bg-yellow-600 text-white",
+    secondary: "bg-gray-100 hover:bg-gray-200 text-gray-700 border",
+    subtle: "text-gray-600 hover:text-gray-900",
+  };
+
   return (
     <button
-      onClick={useClientPDF ? downloadClientInvoice : downloadServerInvoice}
+      onClick={handleClick}
       disabled={loading}
-      className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full text-sm font-medium transition"
+      className={`${baseClasses} ${variants[variant]} ${
+        loading ? "opacity-70 cursor-not-allowed" : ""
+      }`}
     >
-      {loading ? "Generating..." : "Download Invoice 🧾"}
+      {loading ? "Generating..." : label}
+      {showIcon && !loading && <span className="ml-2">🧾</span>}
     </button>
   );
 }

@@ -7,7 +7,7 @@ import { CheckCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-
+import InvoiceButton from "@/components/orders/InvoiceButton"; // ✅ add
 
 export default function OrderSuccessPage() {
   const router = useRouter();
@@ -19,20 +19,33 @@ export default function OrderSuccessPage() {
   // 📦 Fetch order details from Firestore
   useEffect(() => {
     if (!id) return;
-    const fetchOrder = async () => {
+    (async () => {
       try {
-        const snap = await getDoc(doc(db, "orders", id));
-        if (snap.exists()) {
-          setOrder({ id: snap.id, ...snap.data() });
-        }
+        const snap = await getDoc(doc(db, "orders", String(id)));
+        if (snap.exists()) setOrder({ id: snap.id, ...snap.data() });
       } catch (err) {
         console.error("Error fetching order:", err);
       } finally {
         setLoading(false);
       }
-    };
-    fetchOrder();
+    })();
   }, [id]);
+
+  // 🧾 Auto-download invoice ONCE after success page loads with an order
+  useEffect(() => {
+    if (!order?.id) return;
+    // Only auto-download for paid/confirmed-like states; tweak as needed
+    const okStatuses = ["paid", "confirmed", "processing", "completed", "success"];
+    const status = String(order.status || "").toLowerCase();
+
+    const key = `invoice-auto-${order.id}`;
+    const already = typeof window !== "undefined" && sessionStorage.getItem(key);
+
+    if (!already && okStatuses.includes(status)) {
+      window.open(`/api/invoice/${order.id}`, "_blank"); // generates via server
+      sessionStorage.setItem(key, "true");
+    }
+  }, [order]);
 
   // 🗓️ Helper: format delivery ETA (5–7 business days)
   const getDeliveryETA = (createdAt) => {
@@ -84,7 +97,7 @@ export default function OrderSuccessPage() {
               <p className="mb-2">
                 Status:{" "}
                 <span className="font-semibold capitalize text-green-600">
-                  {order.status}
+                  {String(order.status || "processing")}
                 </span>
               </p>
               <p className="mb-4">
@@ -97,10 +110,7 @@ export default function OrderSuccessPage() {
               {/* 🛍️ Ordered Items */}
               <div className="border-t pt-4 space-y-3">
                 {order.items?.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between items-center text-sm"
-                  >
+                  <div key={idx} className="flex justify-between items-center text-sm">
                     <div className="flex items-center gap-3">
                       <img
                         src={item.image || item.imageUrl || item.images?.[0] || "/products/placeholder.png"}
@@ -114,25 +124,27 @@ export default function OrderSuccessPage() {
                 ))}
               </div>
 
+              {/* 🧾 Manual Download Button */}
+              <div className="mt-5 text-center">
+                <InvoiceButton orderId={order.id} />
+              </div>
+
               {/* 🏡 Address */}
               {order.customer && (
                 <div className="mt-5 text-gray-600 text-sm">
                   <p className="font-medium text-gray-800 mb-1">Shipping to:</p>
                   <p>
                     {order.customer.name}, {order.customer.address},{" "}
-                    {order.customer.city}, {order.customer.state} -{" "}
-                    {order.customer.pincode}
+                    {order.customer.city}, {order.customer.state} - {order.customer.pincode}
                   </p>
-                  {order.customer.phone && (
-                    <p>📞 {order.customer.phone}</p>
-                  )}
+                  {order.customer.phone && <p>📞 {order.customer.phone}</p>}
                 </div>
               )}
 
               {/* 💰 Total */}
               <div className="mt-4 pt-4 border-t flex justify-between font-semibold text-base">
                 <span>Total</span>
-                <span>₹{order.total?.toLocaleString("en-IN")}</span>
+                <span>₹{Number(order.total || 0).toLocaleString("en-IN")}</span>
               </div>
             </>
           ) : (
@@ -160,7 +172,7 @@ export default function OrderSuccessPage() {
 
         {/* 🌸 Subtle Note */}
         <p className="text-xs text-gray-400 mt-6">
-          You will receive a confirmation email shortly with shipping details.
+          Your invoice is generated automatically. You can download it again anytime.
         </p>
       </motion.div>
     </section>
