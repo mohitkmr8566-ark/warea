@@ -10,27 +10,34 @@ export default async function handler(req, res) {
   try {
     const { amount, receiptNote } = req.body || {};
     const amountNum = Number(amount);
+
     if (!amountNum || amountNum <= 0) {
       return res.status(400).json({ error: "Invalid amount" });
     }
 
-    const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    // ✅ Use secure server-side env only
+    const key_id = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!key_id || !key_secret) {
       return res.status(500).json({ error: "Razorpay keys missing on server" });
     }
 
-    const razorpay = new Razorpay({ key_id, key_secret });
-
-    const order = await razorpay.orders.create({
-      amount: Math.round(amountNum * 100), // in paise
-      currency: process.env.NEXT_PUBLIC_CURRENCY || "INR",
-      receipt: `warea_${Date.now()}`,
-      notes: { source: "Warea Checkout", ...(receiptNote ? { receiptNote } : {}) },
+    const razorpay = new Razorpay({
+      key_id,
+      key_secret,
     });
 
-    // Return both patterns so current/future clients are happy
+    const order = await razorpay.orders.create({
+      amount: Math.round(amountNum * 100),
+      currency: process.env.NEXT_PUBLIC_CURRENCY || "INR",
+      receipt: `warea_${Date.now()}`,
+      notes: {
+        source: "Warea Checkout",
+        ...(receiptNote ? { receiptNote } : {}),
+      },
+    });
+
     return res.status(200).json({
       order,
       id: order.id,
