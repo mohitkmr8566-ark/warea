@@ -1,7 +1,9 @@
-// ✅ ES module
-import bundleAnalyzer from '@next/bundle-analyzer';
+// ✅ Use ES module syntax
+import bundleAnalyzer from "@next/bundle-analyzer";
 
-const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -10,40 +12,57 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
 
+  // ✅ Updated Image Config (Next.js 15 & 16 safe)
   images: {
-    domains: ['res.cloudinary.com'],
-    formats: ['image/avif', 'image/webp'],
+    // ❌ domains is deprecated, so DO NOT use it
+    // ✅ Remote patterns (Cloudinary, etc.)
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
+    ],
+    // ✅ Prevent Next.js from blocking query string images like ?f_auto,q_auto
+    // This ensures `/hero-banner.webp?f_auto,q_auto` doesn't break
+    unoptimized: true,
+    formats: ["image/avif", "image/webp"],
   },
 
   eslint: { ignoreDuringBuilds: true },
 
   async headers() {
     return [
-      // ✅ Long-cache only for versioned Next assets
+      // ✅ Cache Next.js static assets
       {
-        source: '/_next/static/(.*)',
+        source: "/_next/static/(.*)",
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
-      // ✅ Long-cache for your static files that change rarely
+      // ✅ Cache for image/fonts/css/js assets
       {
-        source: '/(.*)\\.(js|css|png|jpg|jpeg|webp|avif|gif|svg|ico|ttf|woff|woff2|eot)',
+        source:
+          "/(.*)\\.(js|css|png|jpg|jpeg|webp|avif|gif|svg|ico|ttf|woff|woff2|eot)",
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
-      // ✅ Short cache for HTML/doc responses (ensure fresh)
+      // ✅ No cache for HTML content
       {
-        source: '/((?!_next/).*)',
+        source: "/((?!_next/).*)",
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
         ],
       },
     ];
   },
 
-  // ❌ Remove no-op rewrite
   async rewrites() {
     return [];
   },

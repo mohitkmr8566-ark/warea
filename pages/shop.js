@@ -13,12 +13,16 @@ const ProductGrid = dynamic(() => import("@/components/ProductGrid"), {
   ssr: false,
 });
 
+// ✅ Normalize helper
+const normalize = (str = "") => str.toString().trim().toLowerCase();
+
 export default function ShopPage({ initialProducts, baseUrlFromServer }) {
   const router = useRouter();
 
+  // ✅ Normalize category from URL
   const selectedCategory = useMemo(() => {
     const cat = router.query.cat;
-    return typeof cat === "string" ? cat.toLowerCase() : "all";
+    return typeof cat === "string" ? normalize(cat) : "all";
   }, [router.query.cat]);
 
   const [sort, setSort] = useState("");
@@ -30,6 +34,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
     []
   );
 
+  // ✅ Preserve URL query efficiently (not removed)
   const updateQuery = useCallback(
     (key, value) => {
       const newQuery = { ...router.query };
@@ -105,6 +110,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         />
       </Head>
 
+      {/* ✅ Banner Section */}
       <section className="bg-gradient-to-b from-gray-50 to-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-12 text-center">
           <motion.h1
@@ -121,28 +127,30 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         </div>
       </section>
 
-      {/* Category Filter Row */}
-      <div className="max-w-7xl mx-auto px-4 py-6 flex gap-3 flex-wrap justify-center border-b border-gray-100">
-        {categories.map((cat) => {
-          const isActive = selectedCategory === cat;
-          return (
-            <Link
-              key={cat}
-              href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
-              shallow
-              className={`px-5 py-2.5 rounded-full text-sm border transition font-medium ${
-                isActive
-                  ? "bg-black text-white border-black shadow-md"
-                  : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
-              }`}
-            >
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </Link>
-          );
-        })}
+      {/* ✅ Category Row */}
+      <div className="max-w-7xl mx-auto px-4 py-6 border-b border-gray-100">
+        <div className="flex gap-3 flex-nowrap overflow-x-auto scrollbar-hide justify-center">
+          {categories.map((cat) => {
+            const isActive = selectedCategory === cat;
+            return (
+              <Link
+                key={cat}
+                href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
+                shallow
+                className={`px-5 py-2.5 whitespace-nowrap rounded-full text-sm border transition font-medium ${
+                  isActive
+                    ? "bg-black text-white border-black shadow-md"
+                    : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
+                }`}
+              >
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Filter and Sort */}
+      {/* ✅ Filter + Sort Bar */}
       <div className="sticky top-[64px] bg-white/80 backdrop-blur-md border-b z-30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center gap-4">
           <button
@@ -153,9 +161,8 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
             {showFilters ? "Hide Filters" : "Show Filters"}
           </button>
 
-          <div
-            className={`${showFilters ? "block" : "hidden lg:flex"} items-center gap-3`}
-          >
+          {/** Price Filter */}
+          <div className={`${showFilters ? "block" : "hidden lg:flex"} items-center gap-3`}>
             <label className="text-sm font-medium">Price:</label>
             <select
               value={`${priceRange[0]}-${priceRange[1]}`}
@@ -186,7 +193,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         </div>
       </div>
 
-      {/* Product Grid */}
+      {/* ✅ Product Grid */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -205,16 +212,23 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
   );
 }
 
-/* ✅ Firestore SSR Fetch */
+// ✅ Fixed SSR Serialization for Firestore Timestamp
 export async function getServerSideProps() {
   try {
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
 
-    const products = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const products = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // ✅ Convert createdAt to JSON-safe format
+        createdAt: data.createdAt?.toMillis
+          ? data.createdAt.toMillis()
+          : null,
+      };
+    });
 
     return {
       props: {

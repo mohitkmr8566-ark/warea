@@ -73,7 +73,11 @@ function HeroComponent() {
             <div className="relative w-full h-full">
               {/* ✅ Optimized next/image */}
               <Image
-                src={`${slide.img || "/hero-banner.webp"}?f_auto,q_auto,w_1920`} // Cloudinary URL params for optimization
+                src={
+                  slide.img && slide.img.startsWith("http")
+                    ? `${slide.img}?f_auto,q_auto,w_1920` // External URL with Cloudinary params
+                    : slide.img || "/hero-banner.webp" // Local fallback
+                }
                 alt={slide.title || "Warea Jewellery Banner"}
                 fill
                 priority={i === 0}
@@ -82,7 +86,6 @@ function HeroComponent() {
                 sizes="100vw"
                 className="object-cover object-center brightness-[0.7] scale-105 transition-transform duration-[2500ms] hover:scale-110"
               />
-
               {/* ✅ Enhanced Overlay Gradient for text visibility */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/35 to-transparent" />
 

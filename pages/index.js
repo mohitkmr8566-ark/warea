@@ -68,9 +68,6 @@ export default function HomePage() {
           rel="preload"
           as="image"
           href="/hero-banner.webp"
-          imagesrcset="/hero-banner.webp"
-          imageSizes="100vw"
-          type="image/webp"
         />
 
         {/* Preload primary font (adjust path/name if needed) */}
