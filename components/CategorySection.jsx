@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 
-// ✅ Cloudinary URLs for categories (only 4 — no duplicates)
 const categories = [
   {
     name: "Earrings",
@@ -24,6 +23,12 @@ const categories = [
     link: "/shop?cat=necklaces",
   },
   {
+    name: "Rings",
+    image:
+      "https://res.cloudinary.com/dciykssl9/image/upload/v1762011991/Rings_j6gk1q.jpg",
+    link: "/shop?cat=rings",
+  },
+  {
     name: "Gift Sets",
     image:
       "https://res.cloudinary.com/dciykssl9/image/upload/v1759959785/giftsets_wtxlgs.jpg",
@@ -38,8 +43,18 @@ export default function CategorySection() {
         Shop by Collection
       </h2>
 
-      {/* ✅ Fixed grid: always max 4 items */}
-      <div className="mx-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 place-items-center max-w-5xl">
+      {/* ✅ Responsive grid for exactly 5 categories */}
+      <div className="
+        grid
+        grid-cols-2
+        sm:grid-cols-3
+        md:grid-cols-4
+        lg:grid-cols-5
+        gap-6
+        max-w-6xl
+        mx-auto
+        place-items-center
+      ">
         {categories.map((cat, index) => (
           <motion.div
             key={cat.name}
@@ -52,7 +67,7 @@ export default function CategorySection() {
               href={cat.link}
               className="group block rounded-2xl overflow-hidden border bg-white shadow-sm
                          hover:shadow-lg hover:-translate-y-1 transition-all duration-300
-                         w-28 sm:w-32 md:w-40 lg:w-44"
+                         w-28 sm:w-32 md:w-36 lg:w-40"
             >
               <div className="aspect-square overflow-hidden">
                 <img
@@ -65,7 +80,7 @@ export default function CategorySection() {
                 />
               </div>
               <div className="py-2 text-center bg-gray-50 group-hover:bg-yellow-50 transition-colors duration-300">
-                <h3 className="text-sm sm:text-base font-medium transition-colors duration-300 group-hover:text-yellow-600">
+                <h3 className="text-sm sm:text-base font-medium group-hover:text-yellow-600">
                   {cat.name}
                 </h3>
               </div>

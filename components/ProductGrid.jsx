@@ -21,7 +21,7 @@ function ProductGrid({
   sort = "",
   minPrice = 0,
   maxPrice = Infinity,
-  pageSize = DEFAULT_PAGE_SIZE, // optional override
+  pageSize = DEFAULT_PAGE_SIZE,
 }) {
   const [products, setProducts] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
@@ -32,35 +32,53 @@ function ProductGrid({
   const mountedRef = useRef(true);
   const observerRef = useRef(null);
   const lastElRef = useRef(null);
-  const nextPageWarmRef = useRef(null); // for idle warm-up
+  const nextPageWarmRef = useRef(null);
 
-  // ---------- helpers ----------
+  // ✅ Normalize string (trim + lowercase)
+  const normalize = (str = "") => str.toString().trim().toLowerCase();
+
+  // ✅ Apply all filters cleanly
   const applyFilters = useCallback(
     (items) => {
       let filtered = items;
 
-      if (onlyFeatured) filtered = filtered.filter((p) => p.isFeatured === true);
-
-      if (category && category !== "all") {
-        const cat = String(category).toLowerCase();
-        filtered = filtered.filter(
-          (p) => (p.category || "").toLowerCase() === cat
-        );
+      // Featured filter
+      if (onlyFeatured) {
+        filtered = filtered.filter((p) => p.isFeatured === true);
       }
 
+      // ✅ Category filter (smart "ring" / "rings" support)
+      if (category && category !== "all") {
+        const cat = normalize(category); // e.g., "rings"
+        filtered = filtered.filter((p) => {
+          const productCat = normalize(p.category); // e.g., "ring"
+
+          if (!productCat) return false;
+          if (productCat === cat) return true;
+
+          // ✅ If database says "ring" but URL is "rings" → match
+          if (productCat + "s" === cat) return true;
+
+          // ✅ If database says "rings" and URL says "ring" (future-safe)
+          if (productCat === cat + "s") return true;
+
+          return false;
+        });
+      }
+
+      // ✅ Price filter
       filtered = filtered.filter((p) => {
         const price = Number(p.price) || 0;
         return price >= minPrice && price <= maxPrice;
       });
 
+      // ✅ Sorting logic
       if (sort === "low-to-high") {
         filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
       } else if (sort === "high-to-low") {
         filtered = [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
       } else if (sort === "popular") {
-        filtered = [...filtered].sort(
-          (a, b) => (b.popularity || 0) - (a.popularity || 0)
-        );
+        filtered = [...filtered].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
       } else if (sort === "new-arrivals") {
         filtered = [...filtered].sort(
           (a, b) =>
@@ -68,20 +86,20 @@ function ProductGrid({
         );
       }
 
+      // ✅ Only show active products
       return filtered.filter((p) => p.isActive !== false);
     },
     [onlyFeatured, category, sort, minPrice, maxPrice]
   );
 
+  // ✅ Avoid duplicate products when loading more
   const dedupeMerge = useCallback((prev, next) => {
     const map = new Map(prev.map((p) => [p.id, p]));
-    for (const item of next) {
-      map.set(item.id, item);
-    }
+    for (const item of next) map.set(item.id, item);
     return Array.from(map.values());
   }, []);
 
-  // ---------- fetch initial ----------
+  // ✅ Fetch first page
   const fetchInitial = useCallback(async () => {
     setLoading(true);
     try {
@@ -98,16 +116,6 @@ function ProductGrid({
       setProducts(items);
       setLastDoc(snap.docs[snap.docs.length - 1] || null);
       setHasMore(snap.docs.length === pageSize);
-
-      // best-effort pre-warm the next page in idle time
-      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-        window.requestIdleCallback(
-          () => {
-            nextPageWarmRef.current = { qStart: snap.docs[snap.docs.length - 1] || null };
-          },
-          { timeout: 1000 }
-        );
-      }
     } catch (err) {
       console.error("❌ Error fetching products:", err);
     } finally {
@@ -115,7 +123,7 @@ function ProductGrid({
     }
   }, [applyFilters, pageSize]);
 
-  // ---------- load more ----------
+  // ✅ Load more when scrolling
   const loadMore = useCallback(async () => {
     if (!lastDoc || loadingMore) return;
     setLoadingMore(true);
@@ -124,7 +132,7 @@ function ProductGrid({
         collection(db, "products"),
         orderBy("createdAt", "desc"),
         startAfter(lastDoc),
-        fbLimit(Math.max(8, Math.floor(pageSize / 1.5))) // small chunk for smoother scroll
+        fbLimit(Math.max(8, Math.floor(pageSize / 1.5)))
       );
       const snap = await getDocs(q);
       let items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -141,27 +149,23 @@ function ProductGrid({
     }
   }, [lastDoc, loadingMore, pageSize, applyFilters, dedupeMerge]);
 
-  // ---------- observer ----------
+  // ✅ Intersection Observer for infinite scroll
   const lastProductRef = useCallback(
     (node) => {
-      // disconnect old
       if (observerRef.current) observerRef.current.disconnect();
-
       if (!node || !hasMore) return;
-      lastElRef.current = node;
 
       observerRef.current = new IntersectionObserver((entries) => {
         if (entries[0]?.isIntersecting && !loadingMore) {
           loadMore();
         }
       });
-
       observerRef.current.observe(node);
     },
     [hasMore, loadingMore, loadMore]
   );
 
-  // mount / unmount
+  // Lifecycle management
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -170,12 +174,11 @@ function ProductGrid({
     };
   }, []);
 
-  // refetch when any filter/sort changes
   useEffect(() => {
     fetchInitial();
   }, [fetchInitial]);
 
-  // ---------- UI states ----------
+  // ✅ Loading UI
   if (loading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 animate-pulse">
@@ -186,16 +189,11 @@ function ProductGrid({
     );
   }
 
+  // ✅ Empty state UI
   if (!products || products.length === 0) {
     return (
       <div className="text-center py-20 text-gray-500">
-        <img
-          src="/empty-state.svg"
-          alt="No products"
-          className="mx-auto mb-4 w-32 opacity-70"
-          loading="lazy"
-          decoding="async"
-        />
+        <img src="/empty-state.svg" alt="No products" className="mx-auto mb-4 w-32 opacity-70" />
         <p className="text-lg font-medium">No products found</p>
         <p className="text-sm text-gray-400 mt-1">
           Try adjusting your filters or browse another category.
@@ -204,6 +202,7 @@ function ProductGrid({
     );
   }
 
+  // ✅ Render product cards
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
       <AnimatePresence>
@@ -225,7 +224,6 @@ function ProductGrid({
         })}
       </AnimatePresence>
 
-      {/* subtle loader when fetching more */}
       {loadingMore && (
         <div className="col-span-full flex justify-center py-6">
           <div className="h-6 w-6 rounded-full border-2 border-gray-300 border-t-gray-700 animate-spin" />
