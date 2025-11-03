@@ -13,13 +13,13 @@ const ProductGrid = dynamic(() => import("@/components/ProductGrid"), {
   ssr: false,
 });
 
-// Normalize helper
+// ✅ Normalize helper
 const normalize = (str = "") => str.toString().trim().toLowerCase();
 
 export default function ShopPage({ initialProducts, baseUrlFromServer }) {
   const router = useRouter();
 
-  // normalize category from URL
+  // ✅ Normalize category from URL
   const selectedCategory = useMemo(() => {
     const cat = router.query.cat;
     return typeof cat === "string" ? normalize(cat) : "all";
@@ -34,7 +34,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
     []
   );
 
-  // ✅ (restored) helper to modify query params shallowly
+  // ✅ Preserve URL query efficiently (not removed)
   const updateQuery = useCallback(
     (key, value) => {
       const newQuery = { ...router.query };
@@ -50,7 +50,6 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
   const handlePriceChange = useCallback((e) => {
     const [min, max] = e.target.value.split("-").map(Number);
     setPriceRange([min, max]);
-    // example use: updateQuery("price", e.target.value);
   }, []);
 
   const heading = useMemo(
@@ -111,7 +110,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         />
       </Head>
 
-      {/* Heading */}
+      {/* ✅ Banner Section */}
       <section className="bg-gradient-to-b from-gray-50 to-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-12 text-center">
           <motion.h1
@@ -128,7 +127,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         </div>
       </section>
 
-      {/* Category row */}
+      {/* ✅ Category Row */}
       <div className="max-w-7xl mx-auto px-4 py-6 border-b border-gray-100">
         <div className="flex gap-3 flex-nowrap overflow-x-auto scrollbar-hide justify-center">
           {categories.map((cat) => {
@@ -151,7 +150,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         </div>
       </div>
 
-      {/* Filters / Sorting */}
+      {/* ✅ Filter + Sort Bar */}
       <div className="sticky top-[64px] bg-white/80 backdrop-blur-md border-b z-30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center gap-4">
           <button
@@ -162,6 +161,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
             {showFilters ? "Hide Filters" : "Show Filters"}
           </button>
 
+          {/** Price Filter */}
           <div className={`${showFilters ? "block" : "hidden lg:flex"} items-center gap-3`}>
             <label className="text-sm font-medium">Price:</label>
             <select
@@ -193,7 +193,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         </div>
       </div>
 
-      {/* Product Grid */}
+      {/* ✅ Product Grid */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -212,7 +212,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
   );
 }
 
-// ✅ Fixed getServerSideProps: convert Firestore Timestamp → millis for JSON
+// ✅ Fixed SSR Serialization for Firestore Timestamp
 export async function getServerSideProps() {
   try {
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
@@ -223,7 +223,10 @@ export async function getServerSideProps() {
       return {
         id: doc.id,
         ...data,
-        createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : null,
+        // ✅ Convert createdAt to JSON-safe format
+        createdAt: data.createdAt?.toMillis
+          ? data.createdAt.toMillis()
+          : null,
       };
     });
 

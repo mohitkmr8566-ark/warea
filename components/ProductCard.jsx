@@ -12,7 +12,7 @@ const ProductPreviewModal = dynamic(() => import("./ProductPreviewModal"), {
   ssr: false,
 });
 
-// ✅ Normalize product images
+// ✅ Normalize images
 function normalizeImages(product) {
   const imagesArray = Array.isArray(product.images)
     ? product.images
@@ -28,7 +28,6 @@ function normalizeImages(product) {
     "/products/placeholder.png";
 
   const secondary = imagesArray[1] || null;
-
   return { primary, secondary, all: imagesArray.length ? imagesArray : [primary] };
 }
 
@@ -48,13 +47,13 @@ function ProductCard({ product }) {
     [product.slug, product.id]
   );
 
-  // ✅ Price calculations
+  // ✅ Price logic
   const price = Number(product.price) || 0;
   const discount = Number(product.discountPercent) || 0;
   const originalPrice =
     discount > 0 ? Math.round(price / (1 - discount / 100)) : null;
 
-  // ✅ Cart
+  // ✅ Add to cart
   const handleAddToCart = useCallback(() => {
     addItem?.(product);
     toast.success(`${product.title} added to Cart 🛒`);
@@ -87,18 +86,17 @@ function ProductCard({ product }) {
         )}
 
         {/* ✅ Product Image */}
-        <Link href={detailPath} className="relative block">
-          <div className="aspect-square w-full bg-gray-50 overflow-hidden relative">
+        <Link href={detailPath} className="block">
+          <div className="aspect-square w-full overflow-hidden bg-gray-50 relative">
             <img
               src={`${primary}?f_auto,q_auto,w=480`}
               alt={product.title}
               className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105 group-hover:opacity-0"
-              onError={(e) => (e.currentTarget.src = "/placeholder.png")}
             />
             {secondary && (
               <img
                 src={`${secondary}?f_auto,q_auto,w=480`}
-                alt="alternate"
+                alt="alt-img"
                 className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out scale-105 opacity-0 group-hover:opacity-100"
               />
             )}
@@ -108,14 +106,14 @@ function ProductCard({ product }) {
         {/* ✅ Wishlist Button */}
         <button
           onClick={handleToggleWishlist}
-          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm border shadow-md transition ${
+          className={`absolute top-3 right-3 p-2 rounded-full border backdrop-blur-sm shadow-md transition ${
             wished ? "bg-red-500 text-white" : "bg-white/90 hover:bg-gray-100"
           }`}
         >
           <Heart size={18} fill={wished ? "white" : "none"} />
         </button>
 
-        {/* ✅ Product Info */}
+        {/* ✅ Product Text Info */}
         <div className="p-4 text-center">
           <Link href={detailPath}>
             <h3 className="font-medium text-base md:text-lg text-gray-900 truncate hover:text-yellow-600 transition">
@@ -126,21 +124,19 @@ function ProductCard({ product }) {
             </p>
           </Link>
 
-          {/* ✅ Price Section */}
+          {/* ✅ Price (always visible) */}
           <div className="mt-2 flex items-center justify-center gap-2">
             {originalPrice && (
               <span className="text-sm text-gray-400 line-through">
                 ₹{originalPrice}
               </span>
             )}
-            <span className="text-lg md:text-xl font-semibold">
-              ₹{price}
-            </span>
+            <span className="text-lg md:text-xl font-semibold">₹{price}</span>
           </div>
         </div>
 
-        {/* ✅ Action Buttons → No overlap with price */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-3 transition-all duration-500">
+        {/* ✅ Hover buttons BELOW price */}
+        <div className="opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 flex justify-center gap-2 pb-4">
           <button
             onClick={handleAddToCart}
             className="flex items-center gap-1 px-4 py-1.5 bg-black text-white text-xs md:text-sm rounded-full hover:bg-gray-800"
@@ -156,7 +152,7 @@ function ProductCard({ product }) {
         </div>
       </div>
 
-      {/* ✅ Quick View Modal */}
+      {/* ✅ Modal */}
       {showPreview && (
         <ProductPreviewModal
           product={{ ...product, images: all }}
