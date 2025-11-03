@@ -12,23 +12,19 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
 
-  // ✅ Updated Image Configuration (Next.js 15/16 Compatible)
+  // ✅ Updated Image Config (Next.js 15 & 16 safe)
   images: {
-    // ❌ Removed deprecated domains array
-    // ✅ Allow Cloudinary & remote images
+    // ❌ domains is deprecated, so DO NOT use it
+    // ✅ Remote patterns (Cloudinary, etc.)
     remotePatterns: [
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
       },
-      // You can add more domains here if needed
     ],
-    // ✅ Allow local images even with query params (important for ?f_auto...)
-    localPatterns: [
-      {
-        pathname: "/**",
-      },
-    ],
+    // ✅ Prevent Next.js from blocking query string images like ?f_auto,q_auto
+    // This ensures `/hero-banner.webp?f_auto,q_auto` doesn't break
+    unoptimized: true,
     formats: ["image/avif", "image/webp"],
   },
 
@@ -36,22 +32,28 @@ const nextConfig = {
 
   async headers() {
     return [
-      // ✅ Cache control for Next.js static files
+      // ✅ Cache Next.js static assets
       {
         source: "/_next/static/(.*)",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
-      // ✅ Cache control for static assets like JS/CSS/Images
+      // ✅ Cache for image/fonts/css/js assets
       {
         source:
           "/(.*)\\.(js|css|png|jpg|jpeg|webp|avif|gif|svg|ico|ttf|woff|woff2|eot)",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
-      // ✅ No caching for HTML pages
+      // ✅ No cache for HTML content
       {
         source: "/((?!_next/).*)",
         headers: [
@@ -61,7 +63,6 @@ const nextConfig = {
     ];
   },
 
-  // ✅ Still empty rewrites (fine for now)
   async rewrites() {
     return [];
   },
