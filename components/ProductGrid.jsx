@@ -32,37 +32,34 @@ function ProductGrid({
   const mountedRef = useRef(true);
   const observerRef = useRef(null);
 
+  // ✅ Normalize
   const normalize = (str = "") => str.toString().trim().toLowerCase();
 
+  // ✅ Core filter logic
   const applyFilters = useCallback(
     (items) => {
       let filtered = items;
 
-      // Featured filter
-      if (onlyFeatured) {
-        filtered = filtered.filter((p) => p.isFeatured === true);
-      }
+      if (onlyFeatured) filtered = filtered.filter((p) => p.isFeatured === true);
 
-      // Category filter
       if (category && category !== "all") {
         const cat = normalize(category);
         filtered = filtered.filter((p) => {
           const productCat = normalize(p.category);
           if (!productCat) return false;
-          if (productCat === cat) return true;
-          if (productCat + "s" === cat) return true;
-          if (productCat === cat + "s") return true;
-          return false;
+          return (
+            productCat === cat ||
+            productCat + "s" === cat ||
+            productCat === cat + "s"
+          );
         });
       }
 
-      // Price filter
       filtered = filtered.filter((p) => {
         const price = Number(p.price) || 0;
         return price >= minPrice && price <= maxPrice;
       });
 
-      // Sort
       if (sort === "low-to-high") {
         filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
       } else if (sort === "high-to-low") {
@@ -75,13 +72,12 @@ function ProductGrid({
         );
       }
 
-      // Only active
       return filtered.filter((p) => p.isActive !== false);
     },
     [onlyFeatured, category, sort, minPrice, maxPrice]
   );
 
-  // 🔁 If onlyFeatured produces empty, fall back to latest (prevents blank section on home)
+  // ✅ Fallback when featured is empty
   const featuredFallback = useCallback(async (pageLimit) => {
     const q2 = query(
       collection(db, "products"),
@@ -92,12 +88,14 @@ function ProductGrid({
     return snap2.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   }, []);
 
+  // ✅ Merge without duplicates
   const dedupeMerge = useCallback((prev, next) => {
     const map = new Map(prev.map((p) => [p.id, p]));
-    for (const item of next) map.set(item.id, item);
+    next.forEach((item) => map.set(item.id, item));
     return Array.from(map.values());
   }, []);
 
+  // ✅ First load
   const fetchInitial = useCallback(async () => {
     setLoading(true);
     try {
@@ -110,14 +108,10 @@ function ProductGrid({
       let items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       let filtered = applyFilters(items);
 
-      // ⛑️ Fallback if "onlyFeatured" yields nothing
       if (onlyFeatured && filtered.length === 0) {
         const latest = await featuredFallback(pageSize);
-        filtered = applyFilters(latest.filter((p) => p)); // reapply non-feature filters
-        if (filtered.length === 0) {
-          // if still nothing after other filters, just show latest
-          filtered = latest;
-        }
+        filtered = applyFilters(latest);
+        if (filtered.length === 0) filtered = latest;
       }
 
       if (!mountedRef.current) return;
@@ -131,6 +125,7 @@ function ProductGrid({
     }
   }, [applyFilters, featuredFallback, onlyFeatured, pageSize]);
 
+  // ✅ Load more (infinite scroll)
   const loadMore = useCallback(async () => {
     if (!lastDoc || loadingMore) return;
     setLoadingMore(true);
@@ -142,30 +137,32 @@ function ProductGrid({
         fbLimit(Math.max(8, Math.floor(pageSize / 1.5)))
       );
       const snap = await getDocs(q1);
-      let items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      let filtered = applyFilters(items);
+      const items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const filtered = applyFilters(items);
 
-      // No special fallback on loadMore to keep paging simple
       if (!mountedRef.current) return;
       setProducts((prev) => dedupeMerge(prev, filtered));
       setLastDoc(snap.docs[snap.docs.length - 1] || null);
       setHasMore(snap.docs.length > 0);
     } catch (err) {
-      console.error("❌ Error loading more products:", err);
+      console.error("❌ Error loading more:", err);
     } finally {
       if (mountedRef.current) setLoadingMore(false);
     }
-  }, [lastDoc, loadingMore, applyFilters, pageSize, dedupeMerge]);
+  }, [lastDoc, loadingMore, applyFilters, dedupeMerge, pageSize]);
 
+  // ✅ Intersection observer
   const lastProductRef = useCallback(
     (node) => {
       if (observerRef.current) observerRef.current.disconnect();
       if (!node || !hasMore) return;
+
       observerRef.current = new IntersectionObserver((entries) => {
         if (entries[0]?.isIntersecting && !loadingMore) {
           loadMore();
         }
       });
+
       observerRef.current.observe(node);
     },
     [hasMore, loadingMore, loadMore]
@@ -180,10 +177,10 @@ function ProductGrid({
     };
   }, [fetchInitial]);
 
-  // ⏳ Skeleton
+  // ✅ Loading skeleton
   if (loading) {
     return (
-      <div className="grid w-full max-w-full grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 animate-pulse">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 animate-pulse">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="h-64 rounded-xl bg-gray-200" />
         ))}
@@ -191,8 +188,8 @@ function ProductGrid({
     );
   }
 
-  // 🈳 Empty state
-  if (!products || products.length === 0) {
+  // ✅ Empty state
+  if (!products.length) {
     return (
       <div className="text-center py-20 text-gray-500">
         <img src="/empty-state.svg" alt="No products" className="mx-auto mb-4 w-32 opacity-70" />
@@ -204,9 +201,9 @@ function ProductGrid({
     );
   }
 
-  // 🧱 Grid
+  // ✅ Final Grid — Mobile & Desktop perfect alignment
   return (
-    <div className="grid w-full max-w-full grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 w-full">
       <AnimatePresence>
         {products.map((p, idx) => {
           const isLast = idx === products.length - 1;
