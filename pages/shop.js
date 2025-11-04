@@ -1,4 +1,4 @@
-// pages/shop.js
+// ✅ pages/shop.js (final responsive+layout safe version)
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -13,13 +13,13 @@ const ProductGrid = dynamic(() => import("@/components/ProductGrid"), {
   ssr: false,
 });
 
-// ✅ Normalize helper
+// Normalize helper
 const normalize = (str = "") => str.toString().trim().toLowerCase();
 
 export default function ShopPage({ initialProducts, baseUrlFromServer }) {
   const router = useRouter();
 
-  // ✅ Normalize category from URL
+  // Category from URL
   const selectedCategory = useMemo(() => {
     const cat = router.query.cat;
     return typeof cat === "string" ? normalize(cat) : "all";
@@ -34,32 +34,32 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
     []
   );
 
-  // ✅ Preserve URL query efficiently
   const updateQuery = useCallback(
     (key, value) => {
       const newQuery = { ...router.query };
       if (!value || value === "all") delete newQuery[key];
       else newQuery[key] = value;
-      router.push({ pathname: "/shop", query: newQuery }, undefined, { shallow: true });
+      router.push({ pathname: "/shop", query: newQuery }, undefined, {
+        shallow: true,
+      });
     },
     [router]
   );
 
-  const handlePriceChange = useCallback((e) => {
+  const handlePriceChange = (e) => {
     const [min, max] = e.target.value.split("-").map(Number);
     setPriceRange([min, max]);
-  }, []);
+  };
 
-  const heading = useMemo(
-    () =>
-      selectedCategory !== "all"
-        ? `${selectedCategory[0].toUpperCase()}${selectedCategory.slice(1)} Collection`
-        : "Shop All Products",
-    [selectedCategory]
-  );
+  // Page Title
+  const heading =
+    selectedCategory !== "all"
+      ? `${selectedCategory[0].toUpperCase()}${selectedCategory.slice(1)} Collection`
+      : "Shop All Products";
 
   const baseUrl =
-    baseUrlFromServer || (typeof window !== "undefined" ? window.location.origin : "");
+    baseUrlFromServer ||
+    (typeof window !== "undefined" ? window.location.origin : "");
 
   const pageTitle =
     selectedCategory !== "all"
@@ -70,6 +70,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
     selectedCategory === "all" ? "" : selectedCategory
   } jewellery at Warea. Explore premium handcrafted anti-tarnish collections at affordable prices.`;
 
+  // ✅ JSON-LD structured data
   const itemListJson = useMemo(() => {
     const sample = initialProducts.slice(0, 5) || [];
     return JSON.stringify({
@@ -93,7 +94,9 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         <meta name="description" content={pageDesc} />
         <link
           rel="canonical"
-          href={`${baseUrl}/shop${selectedCategory !== "all" ? `?cat=${selectedCategory}` : ""}`}
+          href={`${baseUrl}/shop${
+            selectedCategory !== "all" ? `?cat=${selectedCategory}` : ""
+          }`}
         />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
@@ -102,16 +105,16 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: itemListJson }} />
       </Head>
 
-      {/* 👇 Guard against tiny horizontal overflow on mobile */}
-      <main className="overflow-x-hidden">
-        {/* ✅ Banner Section */}
+      {/* ✅ MAIN WRAPPER - no horizontal scroll, consistent padding */}
+      <main className="w-full overflow-x-hidden">
+        {/* ✅ Banner */}
         <section className="bg-gradient-to-b from-gray-50 to-white border-b">
-          <div className="max-w-7xl mx-auto px-4 py-12 text-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-3xl sm:text-4xl font-serif font-bold break-words"
+              className="text-3xl sm:text-4xl font-serif font-bold"
             >
               {heading}
             </motion.h1>
@@ -121,32 +124,34 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
           </div>
         </section>
 
-        {/* ✅ Category Row (edge-to-edge scroll, no right sliver) */}
-        <div className="max-w-7xl mx-auto px-0 sm:px-4 py-6 border-b border-gray-100">
-          <div className="flex gap-3 flex-nowrap overflow-x-auto scrollbar-hide justify-start -mx-4 px-4 sm:mx-0 sm:px-0">
-            {categories.map((cat) => {
-              const isActive = selectedCategory === cat;
-              return (
-                <Link
-                  key={cat}
-                  href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
-                  shallow
-                  className={`px-5 py-2.5 whitespace-nowrap rounded-full text-sm border transition font-medium ${
-                    isActive
-                      ? "bg-black text-white border-black shadow-md"
-                      : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
-                  }`}
-                >
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </Link>
-              );
-            })}
+        {/* ✅ Categories Row – fully padded, scrollable if needed */}
+        <div className="border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide whitespace-nowrap">
+              {categories.map((cat) => {
+                const isActive = selectedCategory === cat;
+                return (
+                  <Link
+                    key={cat}
+                    href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
+                    shallow
+                    className={`px-5 py-2.5 rounded-full text-sm border transition font-medium ${
+                      isActive
+                        ? "bg-black text-white border-black shadow"
+                        : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* ✅ Filter + Sort Bar (sticky offset tuned for mobile header) */}
-        <div className="sticky top-[56px] md:top-[64px] bg-white/80 backdrop-blur-md border-b z-30">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center gap-4">
+        {/* ✅ Sticky Filters */}
+        <div className="sticky top-[64px] bg-white/90 backdrop-blur-md border-b z-30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center gap-4">
             <button
               onClick={() => setShowFilters((p) => !p)}
               className="lg:hidden flex items-center gap-2 border px-4 py-2 rounded-md text-sm"
@@ -166,12 +171,13 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
               >
                 <option value="0-10000">All Prices</option>
                 <option value="0-500">Under ₹500</option>
-                <option value="500-1000">₹500 – ₹1000</option>
-                <option value="1000-2000">₹1000 – ₹2000</option>
-                <option value="2000-5000">₹2000 – ₹5000</option>
+                <option value="500-1000">₹500–₹1000</option>
+                <option value="1000-2000">₹1000–₹2000</option>
+                <option value="2000-5000">₹2000–₹5000</option>
               </select>
             </div>
 
+            {/* Sort */}
             <div className="ml-auto">
               <select
                 value={sort}
@@ -188,12 +194,12 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
           </div>
         </div>
 
-        {/* ✅ Product Grid */}
+        {/* ✅ Product Grid Wrapper */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-7xl mx-auto px-3 md:px-4 py-10"
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10"
         >
           <ProductGrid
             category={selectedCategory}
@@ -208,22 +214,19 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
   );
 }
 
-// ✅ Fixed SSR Serialization for Firestore Timestamp
+// ✅ SSR — unchanged
 export async function getServerSideProps() {
   try {
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
-
     const products = snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
         ...data,
-        // ✅ Convert createdAt to JSON-safe format
         createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : null,
       };
     });
-
     return {
       props: {
         initialProducts: products,
