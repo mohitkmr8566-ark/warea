@@ -31,48 +31,32 @@ function ProductGrid({
 
   const mountedRef = useRef(true);
   const observerRef = useRef(null);
-  const lastElRef = useRef(null);
-  const nextPageWarmRef = useRef(null);
 
-  // ✅ Normalize string (trim + lowercase)
   const normalize = (str = "") => str.toString().trim().toLowerCase();
 
-  // ✅ Apply all filters cleanly
   const applyFilters = useCallback(
     (items) => {
       let filtered = items;
 
-      // Featured filter
-      if (onlyFeatured) {
-        filtered = filtered.filter((p) => p.isFeatured === true);
-      }
+      if (onlyFeatured) filtered = filtered.filter((p) => p.isFeatured === true);
 
-      // ✅ Category filter (smart "ring" / "rings" support)
       if (category && category !== "all") {
-        const cat = normalize(category); // e.g., "rings"
+        const cat = normalize(category);
         filtered = filtered.filter((p) => {
-          const productCat = normalize(p.category); // e.g., "ring"
-
+          const productCat = normalize(p.category);
           if (!productCat) return false;
           if (productCat === cat) return true;
-
-          // ✅ If database says "ring" but URL is "rings" → match
           if (productCat + "s" === cat) return true;
-
-          // ✅ If database says "rings" and URL says "ring" (future-safe)
           if (productCat === cat + "s") return true;
-
           return false;
         });
       }
 
-      // ✅ Price filter
       filtered = filtered.filter((p) => {
         const price = Number(p.price) || 0;
         return price >= minPrice && price <= maxPrice;
       });
 
-      // ✅ Sorting logic
       if (sort === "low-to-high") {
         filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
       } else if (sort === "high-to-low") {
@@ -81,25 +65,21 @@ function ProductGrid({
         filtered = [...filtered].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
       } else if (sort === "new-arrivals") {
         filtered = [...filtered].sort(
-          (a, b) =>
-            (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
+          (a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
         );
       }
 
-      // ✅ Only show active products
       return filtered.filter((p) => p.isActive !== false);
     },
     [onlyFeatured, category, sort, minPrice, maxPrice]
   );
 
-  // ✅ Avoid duplicate products when loading more
   const dedupeMerge = useCallback((prev, next) => {
     const map = new Map(prev.map((p) => [p.id, p]));
     for (const item of next) map.set(item.id, item);
     return Array.from(map.values());
   }, []);
 
-  // ✅ Fetch first page
   const fetchInitial = useCallback(async () => {
     setLoading(true);
     try {
@@ -123,7 +103,6 @@ function ProductGrid({
     }
   }, [applyFilters, pageSize]);
 
-  // ✅ Load more when scrolling
   const loadMore = useCallback(async () => {
     if (!lastDoc || loadingMore) return;
     setLoadingMore(true);
@@ -147,14 +126,12 @@ function ProductGrid({
     } finally {
       if (mountedRef.current) setLoadingMore(false);
     }
-  }, [lastDoc, loadingMore, pageSize, applyFilters, dedupeMerge]);
+  }, [lastDoc, loadingMore, applyFilters, pageSize, dedupeMerge]);
 
-  // ✅ Intersection Observer for infinite scroll
   const lastProductRef = useCallback(
     (node) => {
       if (observerRef.current) observerRef.current.disconnect();
       if (!node || !hasMore) return;
-
       observerRef.current = new IntersectionObserver((entries) => {
         if (entries[0]?.isIntersecting && !loadingMore) {
           loadMore();
@@ -165,31 +142,25 @@ function ProductGrid({
     [hasMore, loadingMore, loadMore]
   );
 
-  // Lifecycle management
   useEffect(() => {
     mountedRef.current = true;
+    fetchInitial();
     return () => {
       mountedRef.current = false;
       if (observerRef.current) observerRef.current.disconnect();
     };
-  }, []);
-
-  useEffect(() => {
-    fetchInitial();
   }, [fetchInitial]);
 
-  // ✅ Loading UI
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 animate-pulse">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 animate-pulse">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-64 rounded-xl bg-gray-200 dark:bg-gray-800" />
+          <div key={i} className="h-64 rounded-xl bg-gray-200" />
         ))}
       </div>
     );
   }
 
-  // ✅ Empty state UI
   if (!products || products.length === 0) {
     return (
       <div className="text-center py-20 text-gray-500">
@@ -202,9 +173,8 @@ function ProductGrid({
     );
   }
 
-  // ✅ Render product cards
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
       <AnimatePresence>
         {products.map((p, idx) => {
           const isLast = idx === products.length - 1;
@@ -212,7 +182,7 @@ function ProductGrid({
             <motion.div
               key={p.id}
               ref={isLast ? lastProductRef : null}
-              className="p-1 sm:p-2"
+              className="p-1"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}

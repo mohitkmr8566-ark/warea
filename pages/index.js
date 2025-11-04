@@ -1,24 +1,23 @@
-
-import Head from "next/head"; // ✅ Keep SSR-friendly
+import Head from "next/head";
 import Hero from "@/components/Hero";
 import CategorySection from "@/components/CategorySection";
 import ProductGrid from "@/components/ProductGrid";
 import { motion } from "framer-motion";
 
-// ✅ Import reusable SEO helpers
+// ✅ Import SEO helpers
 import {
   getBaseUrl,
   getOrganizationSchema,
   getWebsiteSchema,
   getBreadcrumbSchema,
   getProductSchemas,
-  getSiteNavSchema,   // ✅ add this line
+  getSiteNavSchema,
 } from "@/lib/seoSchemas";
 
 export default function HomePage() {
   const baseUrl = getBaseUrl();
 
-  // 🛍️ Featured products for schema
+  // ✅ Static featured products data for schema
   const featuredProducts = [
     {
       name: "Gold Plated Heart Earrings",
@@ -46,53 +45,31 @@ export default function HomePage() {
     },
   ];
 
-  // ✅ Combine all schema generators
   const schemas = [
     getOrganizationSchema(baseUrl),
     getWebsiteSchema(baseUrl),
     getBreadcrumbSchema(baseUrl),
-    getSiteNavSchema(baseUrl), // ⬅ add this
-
+    getSiteNavSchema(baseUrl),
     ...getProductSchemas(baseUrl, featuredProducts),
   ];
 
   return (
     <>
       <Head>
-        {/* Networking hints */}
+        {/* Networking performance hints */}
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
 
-        {/* Preload hero image if it's used in the first viewport (swap path if different) */}
-        <link
-          rel="preload"
-          as="image"
-          href="/hero-banner.webp"
-        />
+        <link rel="preload" as="image" href="/hero-banner.webp" />
+        <link rel="preload" as="font" href="/fonts/serif.woff2" type="font/woff2" crossOrigin="anonymous" />
 
-        {/* Preload primary font (adjust path/name if needed) */}
-        <link
-          rel="preload"
-          as="font"
-          href="/fonts/serif.woff2"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-
-        {/* Basic Meta Tags */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-        {/* ⬇ Nice extras */}
         <meta name="robots" content="index,follow,max-image-preview:large" />
         <meta name="theme-color" content="#111111" />
+        <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="alternate" hrefLang="x-default" href={baseUrl} />
-        <link rel="alternate" hrefLang="en-in" href={baseUrl} />
 
-        {/* ✅ Meta + SEO Tags */}
-        <title>
-          Warea Jewellery | Handcrafted Gold & Silver Jewellery Online in India
-        </title>
+        <title>Warea Jewellery | Handcrafted Gold & Silver Jewellery Online in India</title>
         <meta
           name="description"
           content="Buy certified gold & silver jewellery online from Warea. Explore minimal, elegant, and anti-tarnish designs handcrafted with precision."
@@ -101,14 +78,14 @@ export default function HomePage() {
           name="keywords"
           content="warea, jewellery, gold, silver, handcrafted jewellery, earrings, necklaces, bracelets, BIS hallmark, buy jewellery online"
         />
+
         <link rel="canonical" href={baseUrl} />
+        <link rel="alternate" hrefLang="x-default" href={baseUrl} />
+        <link rel="alternate" hrefLang="en-in" href={baseUrl} />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta
-          property="og:title"
-          content="Warea Jewellery | Elegant Gold & Silver Jewellery"
-        />
+        <meta property="og:title" content="Warea Jewellery | Elegant Gold & Silver Jewellery" />
         <meta
           property="og:description"
           content="Explore premium handcrafted gold & silver jewellery from Warea Creations — certified, hallmarked, and timeless."
@@ -118,39 +95,32 @@ export default function HomePage() {
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta
-          name="twitter:title"
-          content="Warea Jewellery | Elegant Gold & Silver Jewellery"
-        />
+        <meta name="twitter:title" content="Warea Jewellery | Elegant Gold & Silver Jewellery" />
         <meta
           name="twitter:description"
           content="Discover timeless handcrafted gold & silver jewellery at Warea Creations."
         />
         <meta name="twitter:image" content={`${baseUrl}/logo.png`} />
 
-        {/* ✅ Inject all JSON-LD Schemas */}
+        {/* ✅ Inject JSON-LD Schemas */}
         {schemas.map((schema, i) => (
-          <script
-            key={i}
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-          />
+          <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
         ))}
       </Head>
 
-      {/* Hero */}
+      {/* ✅ Hero Section */}
       <Hero />
 
-      {/* Categories */}
+      {/* ✅ Categories Section */}
       <section className="py-10 sm:py-14 border-t border-gray-100 animate-fadeIn">
         <div className="page-container">
           <CategorySection />
         </div>
       </section>
 
-      {/* Featured Products */}
-      <section className="py-10 sm:py-14 border-t border-gray-100 animate-fadeIn">
-        <div className="page-container">
+      {/* ✅ Featured Products Section (Now Mobile Optimized) */}
+      <section className="py-8 sm:py-14 border-t border-gray-100 animate-fadeIn">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -158,11 +128,12 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center"
           >
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold tracking-wide mb-8">
+            <h2 className="text-xl sm:text-3xl font-serif font-bold tracking-wide mb-6 sm:mb-8">
               Featured Products
             </h2>
           </motion.div>
-          <ProductGrid />
+          {/* ✅ Only Featured Products & Mobile-Optimized Cards */}
+          <ProductGrid onlyFeatured />
         </div>
       </section>
     </>

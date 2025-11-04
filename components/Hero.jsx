@@ -11,10 +11,9 @@ import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
 
-/* ----------------------------- FALLBACK SLIDES ----------------------------- */
 const FALLBACK = [
   {
-    img: "/hero-banner.webp", // ✅ use local compressed webp
+    img: "/hero-banner.webp",
     title: "Elegant Jewellery",
     desc: "Timeless beauty, crafted for every moment.",
     ctaPrimary: { label: "Shop Now", href: "/shop" },
@@ -22,7 +21,6 @@ const FALLBACK = [
   },
 ];
 
-/* ------------------------------- COMPONENT ------------------------------- */
 function HeroComponent() {
   const [slides, setSlides] = useState([]);
 
@@ -53,13 +51,14 @@ function HeroComponent() {
 
   return (
     <section
-      className="relative w-full h-[480px] sm:h-[600px] md:h-[700px] lg:h-[750px] xl:h-[800px]"
+      className="relative w-full
+      h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-[85vh] xl:h-[90vh]" // More responsive heights
       aria-label="Featured jewellery collections"
     >
       <Swiper
         modules={[Autoplay, Pagination, Navigation]}
         autoplay={{
-          delay: 4200,
+          delay: 4500,
           disableOnInteraction: false,
           pauseOnMouseEnter: true,
         }}
@@ -71,46 +70,62 @@ function HeroComponent() {
         {data.map((slide, i) => (
           <SwiperSlide key={slide.id || i}>
             <div className="relative w-full h-full">
-              {/* ✅ Optimized next/image */}
+              {/* ✅ Higher quality, no dullness, no over-dark */}
               <Image
                 src={
                   slide.img && slide.img.startsWith("http")
-                    ? `${slide.img}?f_auto,q_auto,w_1920` // External URL with Cloudinary params
-                    : slide.img || "/hero-banner.webp" // Local fallback
+                    ? `${slide.img}?q=75&f=auto&fit=cover&w=1920`
+                    : slide.img || "/hero-banner.webp"
                 }
                 alt={slide.title || "Warea Jewellery Banner"}
                 fill
                 priority={i === 0}
-                fetchPriority="high"
-                loading="eager"
                 sizes="100vw"
-                className="object-cover object-center brightness-[0.7] scale-105 transition-transform duration-[2500ms] hover:scale-110"
+                fetchPriority="high"
+                className="
+                  object-cover object-center
+                  brightness-100 contrast-110 saturate-110
+                  transition-transform duration-[2500ms]
+                  md:scale-105 hover:scale-110
+                  max-sm:scale-100
+                "
               />
-              {/* ✅ Enhanced Overlay Gradient for text visibility */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/35 to-transparent" />
 
-              {/* ✅ Text Overlay */}
-              <div className="absolute inset-x-4 sm:inset-x-8 md:left-16 md:right-auto bottom-10 sm:bottom-16 md:bottom-24 text-white max-w-[90%] sm:max-w-xl md:max-w-2xl drop-shadow-xl">
-                <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-tight text-white/95">
+              {/* ✅ Softer gradient overlay (no faded, washed look) */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/20 to-transparent pointer-events-none" />
+
+              {/* ✅ Text Content */}
+              <div className="
+                absolute inset-x-4 sm:inset-x-8
+                bottom-10 sm:bottom-16 md:bottom-24
+                text-white max-w-[90%] sm:max-w-xl md:max-w-2xl
+                drop-shadow-lg
+              ">
+                <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-tight text-white">
                   {slide.title}
                 </h1>
                 {slide.desc && (
-                  <p className="mt-3 sm:mt-4 text-sm sm:text-lg md:text-xl text-gray-100/95">
+                  <p className="mt-3 sm:mt-4 text-sm sm:text-lg md:text-xl text-gray-100">
                     {slide.desc}
                   </p>
                 )}
+
+                {/* ✅ CTA Buttons */}
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     href={slide.ctaPrimary.href}
-                    className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-amber-400 text-gray-900 text-sm sm:text-base font-semibold shadow-md hover:bg-amber-300 transition"
-                    aria-label={slide.ctaPrimary.label}
+                    className="inline-flex items-center justify-center px-6 py-3 rounded-xl
+                    bg-amber-400 text-gray-900 text-sm sm:text-base font-semibold
+                    shadow-md hover:bg-amber-300 transition"
                   >
                     {slide.ctaPrimary.label} →
                   </Link>
+
                   <Link
                     href={slide.ctaSecondary.href}
-                    className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-white/90 text-gray-900 text-sm sm:text-base font-medium shadow hover:bg-white transition backdrop-blur"
-                    aria-label={slide.ctaSecondary.label}
+                    className="inline-flex items-center justify-center px-6 py-3 rounded-xl
+                    bg-white/90 text-gray-900 text-sm sm:text-base font-medium
+                    shadow hover:bg-white transition backdrop-blur"
                   >
                     {slide.ctaSecondary.label}
                   </Link>
