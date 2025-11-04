@@ -32,10 +32,8 @@ function ProductGrid({
   const mountedRef = useRef(true);
   const observerRef = useRef(null);
 
-  // ✅ Normalize
   const normalize = (str = "") => str.toString().trim().toLowerCase();
 
-  // ✅ Core filter logic
   const applyFilters = useCallback(
     (items) => {
       let filtered = items;
@@ -77,7 +75,6 @@ function ProductGrid({
     [onlyFeatured, category, sort, minPrice, maxPrice]
   );
 
-  // ✅ Fallback when featured is empty
   const featuredFallback = useCallback(async (pageLimit) => {
     const q2 = query(
       collection(db, "products"),
@@ -88,14 +85,12 @@ function ProductGrid({
     return snap2.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   }, []);
 
-  // ✅ Merge without duplicates
   const dedupeMerge = useCallback((prev, next) => {
     const map = new Map(prev.map((p) => [p.id, p]));
     next.forEach((item) => map.set(item.id, item));
     return Array.from(map.values());
   }, []);
 
-  // ✅ First load
   const fetchInitial = useCallback(async () => {
     setLoading(true);
     try {
@@ -125,7 +120,6 @@ function ProductGrid({
     }
   }, [applyFilters, featuredFallback, onlyFeatured, pageSize]);
 
-  // ✅ Load more (infinite scroll)
   const loadMore = useCallback(async () => {
     if (!lastDoc || loadingMore) return;
     setLoadingMore(true);
@@ -151,17 +145,18 @@ function ProductGrid({
     }
   }, [lastDoc, loadingMore, applyFilters, dedupeMerge, pageSize]);
 
-  // ✅ Intersection observer
+  // Prefetch before user hits the bottom (smoother on mobile)
   const lastProductRef = useCallback(
     (node) => {
       if (observerRef.current) observerRef.current.disconnect();
       if (!node || !hasMore) return;
 
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0]?.isIntersecting && !loadingMore) {
-          loadMore();
-        }
-      });
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting && !loadingMore) loadMore();
+        },
+        { root: null, rootMargin: "600px 0px", threshold: 0 }
+      );
 
       observerRef.current.observe(node);
     },
@@ -177,7 +172,7 @@ function ProductGrid({
     };
   }, [fetchInitial]);
 
-  // ✅ Loading skeleton
+  // Loading skeleton
   if (loading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 animate-pulse">
@@ -188,7 +183,7 @@ function ProductGrid({
     );
   }
 
-  // ✅ Empty state
+  // Empty state
   if (!products.length) {
     return (
       <div className="text-center py-20 text-gray-500">
@@ -201,7 +196,7 @@ function ProductGrid({
     );
   }
 
-  // ✅ Final Grid — Mobile & Desktop perfect alignment
+  // Final Grid
   return (
     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 w-full">
       <AnimatePresence>
@@ -224,7 +219,7 @@ function ProductGrid({
       </AnimatePresence>
 
       {loadingMore && (
-        <div className="col-span-full flex justify-center py-6">
+        <div className="col-span-full flex justify-center py-6" aria-live="polite">
           <div className="h-6 w-6 rounded-full border-2 border-gray-300 border-t-gray-700 animate-spin" />
         </div>
       )}

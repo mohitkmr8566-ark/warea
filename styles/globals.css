@@ -165,16 +165,31 @@ section {
 }
 
 /* =========================================================
-   RESPONSIVE FIXES
+   RESPONSIVE FIXES (Improved — Final Mobile Cleanup)
    ========================================================= */
 @media (max-width: 640px) {
-  h1 {
-    @apply text-2xl;
-  }
-  h2 {
-    @apply text-xl;
-  }
+  h1 { @apply text-2xl; }
+  h2 { @apply text-xl; }
+
+  /* Reduce side padding to prevent card overflow */
   .page-container {
-    @apply px-4;
+    @apply px-3;
   }
+
+  /* Reduce vertical spacing for sections (hero, categories, product grid) */
+  section {
+    @apply py-8;
+  }
+}
+
+/* Extra-safe for very small phones like iPhone SE (375px) */
+@media (max-width: 400px) {
+  .page-container {
+    @apply px-2; /* tighter padding */
+  }
+}
+
+/* Ensure main content doesn’t hide behind sticky bottom CTA on mobile */
+main {
+  padding-bottom: env(safe-area-inset-bottom, 60px);
 }

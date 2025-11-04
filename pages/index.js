@@ -4,7 +4,7 @@ import CategorySection from "@/components/CategorySection";
 import ProductGrid from "@/components/ProductGrid";
 import { motion } from "framer-motion";
 
-// ✅ Import SEO helpers
+// SEO helpers
 import {
   getBaseUrl,
   getOrganizationSchema,
@@ -17,7 +17,7 @@ import {
 export default function HomePage() {
   const baseUrl = getBaseUrl();
 
-  // ✅ Static featured products data for schema
+  // Static featured products for schema
   const featuredProducts = [
     {
       name: "Gold Plated Heart Earrings",
@@ -102,40 +102,44 @@ export default function HomePage() {
         />
         <meta name="twitter:image" content={`${baseUrl}/logo.png`} />
 
-        {/* ✅ Inject JSON-LD Schemas */}
+        {/* JSON-LD Schemas */}
         {schemas.map((schema, i) => (
           <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
         ))}
       </Head>
 
-      {/* ✅ Hero Section */}
-      <Hero />
+      {/* 📱 Guard against horizontal scroll + consistent page gutters */}
+      <main className="w-full overflow-x-hidden">
+        {/* Hero stays full-bleed as designed */}
+        <Hero />
 
-      {/* ✅ Categories Section */}
-      <section className="py-10 sm:py-14 border-t border-gray-100 animate-fadeIn">
-        <div className="page-container">
-          <CategorySection />
-        </div>
-      </section>
+        {/* Categories */}
+        <section className="py-10 sm:py-14 border-t border-gray-100 animate-fadeIn">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <CategorySection />
+          </div>
+        </section>
 
-      {/* ✅ Featured Products Section (Now Mobile Optimized) */}
-      <section className="py-8 sm:py-14 border-t border-gray-100 animate-fadeIn">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <h2 className="text-xl sm:text-3xl font-serif font-bold tracking-wide mb-6 sm:mb-8">
-              Featured Products
-            </h2>
-          </motion.div>
-          {/* ✅ Only Featured Products & Mobile-Optimized Cards */}
-          <ProductGrid onlyFeatured />
-        </div>
-      </section>
+        {/* Featured Products */}
+        <section className="py-8 sm:py-14 border-t border-gray-100 animate-fadeIn">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <h2 className="text-xl sm:text-3xl font-serif font-bold tracking-wide mb-6 sm:mb-8 break-words">
+                Featured Products
+              </h2>
+            </motion.div>
+
+            {/* Only Featured; grid/card already mobile-safe */}
+            <ProductGrid onlyFeatured />
+          </div>
+        </section>
+      </main>
     </>
   );
 }
