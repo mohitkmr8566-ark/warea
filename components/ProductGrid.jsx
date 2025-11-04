@@ -38,8 +38,12 @@ function ProductGrid({
     (items) => {
       let filtered = items;
 
-      if (onlyFeatured) filtered = filtered.filter((p) => p.isFeatured === true);
+      // Featured filter
+      if (onlyFeatured) {
+        filtered = filtered.filter((p) => p.isFeatured === true);
+      }
 
+      // Category filter
       if (category && category !== "all") {
         const cat = normalize(category);
         filtered = filtered.filter((p) => {
@@ -52,11 +56,13 @@ function ProductGrid({
         });
       }
 
+      // Price filter
       filtered = filtered.filter((p) => {
         const price = Number(p.price) || 0;
         return price >= minPrice && price <= maxPrice;
       });
 
+      // Sort
       if (sort === "low-to-high") {
         filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
       } else if (sort === "high-to-low") {
@@ -69,10 +75,22 @@ function ProductGrid({
         );
       }
 
+      // Only active
       return filtered.filter((p) => p.isActive !== false);
     },
     [onlyFeatured, category, sort, minPrice, maxPrice]
   );
+
+  // 🔁 If onlyFeatured produces empty, fall back to latest (prevents blank section on home)
+  const featuredFallback = useCallback(async (pageLimit) => {
+    const q2 = query(
+      collection(db, "products"),
+      orderBy("createdAt", "desc"),
+      fbLimit(pageLimit)
+    );
+    const snap2 = await getDocs(q2);
+    return snap2.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  }, []);
 
   const dedupeMerge = useCallback((prev, next) => {
     const map = new Map(prev.map((p) => [p.id, p]));
@@ -83,17 +101,27 @@ function ProductGrid({
   const fetchInitial = useCallback(async () => {
     setLoading(true);
     try {
-      const q = query(
+      const q1 = query(
         collection(db, "products"),
         orderBy("createdAt", "desc"),
         fbLimit(pageSize)
       );
-      const snap = await getDocs(q);
+      const snap = await getDocs(q1);
       let items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      items = applyFilters(items);
+      let filtered = applyFilters(items);
+
+      // ⛑️ Fallback if "onlyFeatured" yields nothing
+      if (onlyFeatured && filtered.length === 0) {
+        const latest = await featuredFallback(pageSize);
+        filtered = applyFilters(latest.filter((p) => p)); // reapply non-feature filters
+        if (filtered.length === 0) {
+          // if still nothing after other filters, just show latest
+          filtered = latest;
+        }
+      }
 
       if (!mountedRef.current) return;
-      setProducts(items);
+      setProducts(filtered);
       setLastDoc(snap.docs[snap.docs.length - 1] || null);
       setHasMore(snap.docs.length === pageSize);
     } catch (err) {
@@ -101,24 +129,25 @@ function ProductGrid({
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [applyFilters, pageSize]);
+  }, [applyFilters, featuredFallback, onlyFeatured, pageSize]);
 
   const loadMore = useCallback(async () => {
     if (!lastDoc || loadingMore) return;
     setLoadingMore(true);
     try {
-      const q = query(
+      const q1 = query(
         collection(db, "products"),
         orderBy("createdAt", "desc"),
         startAfter(lastDoc),
         fbLimit(Math.max(8, Math.floor(pageSize / 1.5)))
       );
-      const snap = await getDocs(q);
+      const snap = await getDocs(q1);
       let items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      items = applyFilters(items);
+      let filtered = applyFilters(items);
 
+      // No special fallback on loadMore to keep paging simple
       if (!mountedRef.current) return;
-      setProducts((prev) => dedupeMerge(prev, items));
+      setProducts((prev) => dedupeMerge(prev, filtered));
       setLastDoc(snap.docs[snap.docs.length - 1] || null);
       setHasMore(snap.docs.length > 0);
     } catch (err) {
@@ -151,9 +180,10 @@ function ProductGrid({
     };
   }, [fetchInitial]);
 
+  // ⏳ Skeleton
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 animate-pulse">
+      <div className="grid w-full max-w-full grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 animate-pulse">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="h-64 rounded-xl bg-gray-200" />
         ))}
@@ -161,6 +191,7 @@ function ProductGrid({
     );
   }
 
+  // 🈳 Empty state
   if (!products || products.length === 0) {
     return (
       <div className="text-center py-20 text-gray-500">
@@ -173,8 +204,9 @@ function ProductGrid({
     );
   }
 
+  // 🧱 Grid
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+    <div className="grid w-full max-w-full grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
       <AnimatePresence>
         {products.map((p, idx) => {
           const isLast = idx === products.length - 1;
@@ -182,7 +214,7 @@ function ProductGrid({
             <motion.div
               key={p.id}
               ref={isLast ? lastProductRef : null}
-              className="p-1"
+              className="p-1 sm:p-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
