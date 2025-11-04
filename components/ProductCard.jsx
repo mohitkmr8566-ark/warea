@@ -12,6 +12,7 @@ const ProductPreviewModal = dynamic(() => import("./ProductPreviewModal"), {
   ssr: false,
 });
 
+// ✅ Normalize images (same as before)
 function normalizeImages(product) {
   const imagesArray = Array.isArray(product.images)
     ? product.images
@@ -43,15 +44,18 @@ function ProductCard({ product }) {
     [product.slug, product.id]
   );
 
+  // ✅ Price logic
   const price = Number(product.price) || 0;
   const discount = Number(product.discountPercent) || 0;
   const originalPrice = discount > 0 ? Math.round(price / (1 - discount / 100)) : null;
 
+  // ✅ Add to cart
   const handleAddToCart = useCallback(() => {
     addItem?.(product);
     toast.success(`${product.title} added to Cart 🛒`);
   }, [addItem, product]);
 
+  // ✅ Wishlist toggle
   const handleToggleWishlist = useCallback(
     (e) => {
       e.preventDefault();
@@ -95,39 +99,39 @@ function ProductCard({ product }) {
           </div>
         </Link>
 
-        {/* ✅ Wishlist Heart Button */}
+        {/* ✅ Wishlist Button (fixed for mobile) */}
         <button
           onClick={handleToggleWishlist}
-          className={`absolute top-3 right-3 p-2 rounded-full border backdrop-blur-sm shadow-md transition ${
+          className={`absolute top-2 right-2 sm:top-3 sm:right-3 z-30 p-2 rounded-full border backdrop-blur-sm shadow-md transition ${
             wished ? "bg-red-500 text-white" : "bg-white/90 hover:bg-gray-100"
           }`}
         >
           <Heart size={18} fill={wished ? "white" : "none"} />
         </button>
 
-        {/* ✅ Product Info */}
-        <div className="p-3 text-center md:p-4">
+        {/* ✅ Product Info (prevent text cutting on mobile) */}
+        <div className="p-2 sm:p-3 md:p-4 text-center">
           <Link href={detailPath}>
-            <h3 className="font-medium text-sm md:text-lg text-gray-900 truncate hover:text-yellow-600">
+            <h3 className="font-medium text-sm md:text-lg text-gray-900 line-clamp-2 hover:text-yellow-600">
               {product.title}
             </h3>
-            <p className="text-xs md:text-sm text-gray-500 capitalize">
+            <p className="text-[11px] md:text-sm text-gray-500 capitalize">
               {product.material || product.category}
             </p>
           </Link>
 
           {/* ✅ Price Section */}
-          <div className="mt-2 flex items-center justify-center gap-2">
+          <div className="mt-1 sm:mt-2 flex items-center justify-center gap-2">
             {originalPrice && (
               <span className="text-xs md:text-sm text-gray-400 line-through">
                 ₹{originalPrice}
               </span>
             )}
-            <span className="text-base md:text-xl font-semibold">₹{price}</span>
+            <span className="text-sm md:text-xl font-semibold">₹{price}</span>
           </div>
         </div>
 
-        {/* ✅ Buttons — Visible on Hover (Desktop Only) */}
+        {/* ✅ Hover buttons for Desktop only */}
         <div className="hidden md:flex opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 justify-center gap-2 pb-4">
           <button
             onClick={handleAddToCart}
@@ -144,7 +148,7 @@ function ProductCard({ product }) {
         </div>
       </div>
 
-      {/* ✅ Quick View Popup */}
+      {/* ✅ Quick View Modal */}
       {showPreview && (
         <ProductPreviewModal
           product={{ ...product, images: all }}

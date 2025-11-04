@@ -11,7 +11,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
   const { inWishlist, toggleItem } = useWishlist() || {};
   if (!product) return null;
 
-  // 🖼️ Prepare images array
+  // Normalize images with safe fallback
   const images = useMemo(() => {
     if (Array.isArray(product.images) && product.images.length) return product.images;
     const fallback =
@@ -27,17 +27,16 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
 
   const handleWishlist = () => {
     toggleItem?.(product);
-    if (wished) toast.error(`${product.title} removed from Wishlist ❌`);
-    else toast.success(`${product.title} added to Wishlist ❤️`);
+    wished
+      ? toast.error(`${product.title} removed from Wishlist ❌`)
+      : toast.success(`${product.title} added to Wishlist ❤️`);
   };
 
-  // ⌨️ Close modal on Escape key press
+  // ESC key closes modal
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    const esc = (e) => e.key === "Escape" && onClose?.();
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
 
   return (
@@ -47,7 +46,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose} // 🖱️ Click outside closes modal
+        onClick={onClose}
       >
         <motion.div
           className="relative bg-white rounded-2xl shadow-2xl w-[92%] max-w-3xl max-h-[90vh] overflow-hidden"
@@ -55,24 +54,24 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ duration: 0.2 }}
-          onClick={(e) => e.stopPropagation()} // prevent inside click from closing
+          onClick={(e) => e.stopPropagation()}
         >
-          {/* ✖ Close Button */}
+          {/* Close button */}
           <button
-            onClick={onClose}
-            className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/60 hover:bg-black text-white hover:text-white shadow-lg transition-all duration-300"
-            aria-label="Close"
             type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-3 right-3 p-2 rounded-full bg-black/60 hover:bg-black text-white shadow-lg z-20"
           >
             <X size={20} />
           </button>
 
-          {/* 🖼️ Image carousel with arrows */}
-          <div className="relative w-full h-80 sm:h-[420px] bg-gray-50 flex items-center justify-center">
+          {/* Image */}
+          <div className="relative w-full h-[300px] sm:h-[420px] bg-gray-50">
             <img
               key={idx}
               src={images[idx]}
-              alt={`${product.title} ${idx + 1}`}
+              alt={`${product.title} Image ${idx + 1}`}
               className="w-full h-full object-cover"
               onError={(e) => (e.currentTarget.src = "/products/placeholder.png")}
             />
@@ -81,29 +80,26 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
               <>
                 <button
                   type="button"
-                  onClick={prev}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white shadow"
                   aria-label="Previous image"
+                  onClick={prev}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-white/80 hover:bg-white rounded-full shadow"
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <button
                   type="button"
-                  onClick={next}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white shadow"
                   aria-label="Next image"
+                  onClick={next}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-white/80 hover:bg-white rounded-full shadow"
                 >
                   <ChevronRight size={20} />
                 </button>
 
-                {/* Small indicator dots */}
                 <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
                   {images.map((_, i) => (
                     <span
                       key={i}
-                      className={`h-2 w-2 rounded-full ${
-                        i === idx ? "bg-white" : "bg-white/60"
-                      }`}
+                      className={`h-2 w-2 rounded-full ${i === idx ? "bg-white" : "bg-white/60"}`}
                     />
                   ))}
                 </div>
@@ -111,28 +107,26 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
             )}
           </div>
 
-          {/* 📄 Product details */}
-          <div className="p-5 sm:p-6">
+          {/* Details */}
+          <div className="p-5 sm:p-6 overflow-y-auto max-h-[50vh]">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">
+              <div className="w-full">
+                <h2 className="text-lg sm:text-2xl font-semibold text-gray-900 line-clamp-2">
                   {product.title}
                 </h2>
                 {product.category && (
-                  <p className="text-sm text-gray-500 mt-1 capitalize">
-                    {product.category}
-                  </p>
+                  <p className="text-sm text-gray-500 mt-1 capitalize">{product.category}</p>
                 )}
               </div>
 
-              {/* ❤️ Wishlist toggle */}
+              {/* Wishlist */}
               <button
                 type="button"
+                aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
                 onClick={handleWishlist}
                 className={`p-2 rounded-full border transition ${
                   wished ? "bg-red-500 text-white border-red-500" : "bg-white hover:bg-gray-100"
                 }`}
-                aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
               >
                 <Heart size={18} fill={wished ? "white" : "none"} />
               </button>
@@ -141,17 +135,17 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
             <div className="mt-3 text-2xl font-bold text-gray-800">₹{product.price}</div>
 
             {product.description && (
-              <p className="text-gray-700 mt-3 leading-relaxed text-sm md:text-base">
+              <p className="text-gray-700 mt-3 text-sm sm:text-base leading-relaxed">
                 {product.description}
               </p>
             )}
 
-            {/* 🛒 Action buttons */}
-            <div className="mt-6 flex flex-wrap gap-3">
+            {/* Buttons */}
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={onAddToCart}
-                className="flex items-center gap-2 bg-black text-white px-5 py-2.5 rounded-full hover:bg-gray-800 transition-all active:scale-95"
+                className="flex items-center justify-center gap-2 bg-black text-white px-5 py-2.5 rounded-full hover:bg-gray-800 transition active:scale-95 w-full sm:w-auto"
               >
                 <ShoppingCart size={18} />
                 Add to Cart
@@ -160,7 +154,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
               {detailPath && (
                 <Link
                   href={detailPath}
-                  className="flex items-center gap-2 px-5 py-2.5 border border-blue-600 text-blue-600 rounded-full hover:bg-blue-50 transition-all active:scale-95"
+                  className="flex items-center justify-center gap-2 border border-blue-600 text-blue-600 px-5 py-2.5 rounded-full hover:bg-blue-50 transition active:scale-95 w-full sm:w-auto"
                 >
                   <Info size={18} />
                   Full Details

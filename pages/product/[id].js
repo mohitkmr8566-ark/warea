@@ -158,6 +158,8 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
         {hasImages && (
           <>
             <button
+              type="button"
+              aria-label="Previous image"
               onClick={(e) => {
                 e.stopPropagation();
                 setActive((p) => (p === 0 ? images.length - 1 : p - 1));
@@ -167,6 +169,8 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
               <ChevronLeft size={20} />
             </button>
             <button
+              type="button"
+              aria-label="Next image"
               onClick={(e) => {
                 e.stopPropagation();
                 setActive((p) => (p + 1) % images.length);
@@ -189,6 +193,7 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
           {images.map((img, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => setActive(idx)}
               className={`w-20 h-20 border-2 rounded-md overflow-hidden transition ${
                 idx === active ? "border-amber-500 shadow" : "border-gray-200 hover:border-gray-400"
@@ -217,10 +222,10 @@ function StickyMobileCTA({ priceBlock, addToCart, buyNow, hidden }) {
         <span className="text-lg font-semibold">₹{fmtINR(priceBlock.price)}</span>
       </div>
       <div className="flex gap-2">
-        <button onClick={addToCart} className="px-3 py-2 bg-gray-900 text-white text-sm rounded-lg">
+        <button type="button" onClick={addToCart} className="px-3 py-2 bg-gray-900 text-white text-sm rounded-lg">
           Add to Cart
         </button>
-        <button onClick={buyNow} className="px-3 py-2 bg-amber-500 text-gray-900 text-sm rounded-lg">
+        <button type="button" onClick={buyNow} className="px-3 py-2 bg-amber-500 text-gray-900 text-sm rounded-lg">
           Buy Now
         </button>
       </div>
@@ -241,7 +246,7 @@ function RelatedProducts({ related }) {
           const pr = Number(p.price) || m;
           const disc = m > 0 ? Math.max(0, Math.round(((m - pr) / m) * 100)) : 0;
 
-          return (
+        return (
             <Link key={p.id} href={href} className="min-w-[220px] border rounded-xl bg-white hover:shadow-md transition">
               <div className="aspect-[4/3] overflow-hidden rounded-t-xl">
                 <img src={imgs?.[0]?.url || "/products/placeholder.png"} alt={p.title} className="w-full h-full object-cover" />
@@ -295,6 +300,7 @@ function ReviewSection({
             {[1, 2, 3, 4, 5].map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => setReviewRating(s)}
                 className={`text-2xl ${reviewRating >= s ? "text-amber-500" : "text-gray-300"}`}
                 aria-label={`Rate ${s}`}
@@ -312,6 +318,7 @@ function ReviewSection({
           />
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={onSubmitReview}
               disabled={submittingReview}
               className="bg-amber-500 text-gray-900 px-4 py-2 rounded-lg hover:bg-amber-400"
@@ -319,6 +326,7 @@ function ReviewSection({
               {submittingReview ? "Submitting…" : "Submit Review"}
             </button>
             <button
+              type="button"
               onClick={() => {
                 setReviewRating(5);
                 setReviewComment("");
@@ -397,6 +405,7 @@ function ReviewSection({
                   <div className="flex items-center gap-3">
                     {!isAdminUser && (
                       <button
+                        type="button"
                         onClick={() => onReportReview(r.id)}
                         className="text-xs text-red-600 hover:underline"
                       >
@@ -408,6 +417,7 @@ function ReviewSection({
                       <>
                         {!r.approved && (
                           <button
+                            type="button"
                             onClick={() => onApproveReview(r.id)}
                             className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
                           >
@@ -416,6 +426,7 @@ function ReviewSection({
                         )}
                         {r.flagged && (
                           <button
+                            type="button"
                             onClick={() => onUnflagReview(r.id)}
                             className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded"
                           >
@@ -423,6 +434,7 @@ function ReviewSection({
                           </button>
                         )}
                         <button
+                          type="button"
                           onClick={() => onDeleteReview(r.id)}
                           className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded"
                         >
@@ -478,6 +490,7 @@ function ReviewSection({
                       <div className="flex flex-col gap-2">
                         {!r.approved && (
                           <button
+                            type="button"
                             onClick={() => onApproveReview(r.id)}
                             className="px-3 py-2 bg-green-600 text-white rounded text-sm"
                           >
@@ -485,12 +498,14 @@ function ReviewSection({
                           </button>
                         )}
                         <button
+                          type="button"
                           onClick={() => onUnflagReview(r.id)}
                           className="px-3 py-2 bg-gray-200 rounded text-sm"
                         >
                           Unflag / Clear
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
                             if (
                               confirm(
@@ -961,7 +976,8 @@ export default function ProductDetailPage() {
           ))}
       </Head>
 
-      <div className="max-w-7xl mx-auto px-4 py-10">
+      {/* NOTE: extra pb on mobile keeps content clear of sticky CTA */}
+      <div className="max-w-7xl mx-auto px-4 pt-10 pb-28 lg:pb-10">
         {/* Back link */}
         <Link
           href="/shop"
@@ -1088,20 +1104,24 @@ export default function ProductDetailPage() {
             {/* CTAs */}
             <div className="flex flex-wrap gap-3">
               <button
+                type="button"
                 onClick={addToCart}
-                className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-md hover:bg-gray-800"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-md hover:bg-gray-800"
               >
                 <ShoppingCart size={18} /> Add to Cart
               </button>
               <button
+                type="button"
                 onClick={buyNow}
-                className="px-6 py-3 rounded-lg text-sm font-medium border border-amber-500 bg-amber-500 text-gray-900 hover:bg-amber-400"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg text-sm font-medium border border-amber-500 bg-amber-500 text-gray-900 hover:bg-amber-400"
               >
                 Buy Now
               </button>
               <button
+                type="button"
                 onClick={toggleWishlist}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg border text-sm font-medium transition ${
+                aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+                className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg border text-sm font-medium transition ${
                   wished
                     ? "bg-red-500 border-red-500 text-white hover:bg-red-600"
                     : "border-gray-300 text-gray-700 hover:bg-gray-100"
@@ -1198,12 +1218,16 @@ export default function ProductDetailPage() {
       <AnimatePresence>
         {fullscreen && (
           <motion.div
+            role="dialog"
+            aria-modal="true"
             className="fixed inset-0 bg-black/90 z-[9999] flex flex-col items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <button
+              type="button"
+              aria-label="Close gallery"
               onClick={() => setFullscreen(false)}
               className="absolute top-5 right-5 text-white bg-white/20 hover:bg-white/30 rounded-full p-2"
             >
@@ -1225,6 +1249,8 @@ export default function ProductDetailPage() {
               {images.length > 1 && (
                 <>
                   <button
+                    type="button"
+                    aria-label="Previous image"
                     onClick={() =>
                       setActive((p) => (p === 0 ? images.length - 1 : p - 1))
                     }
@@ -1233,6 +1259,8 @@ export default function ProductDetailPage() {
                     <ChevronLeft size={26} />
                   </button>
                   <button
+                    type="button"
+                    aria-label="Next image"
                     onClick={() => setActive((p) => (p + 1) % images.length)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 rounded-full p-2 text-white"
                   >
