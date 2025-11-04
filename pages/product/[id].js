@@ -93,11 +93,12 @@ function goldPrice(product = {}, settings = {}) {
 }
 
 /* ======================= Subcomponents ======================= */
+
 function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
   const hasImages = images.length > 1;
   const mainImage = images?.[active]?.url || "/products/placeholder.png";
 
-  // lens zoom
+  // lens zoom (desktop only)
   const [showLens, setShowLens] = useState(false);
   const [lensPos, setLensPos] = useState({ x: 0, y: 0 });
   const [lensBg, setLensBg] = useState(mainImage);
@@ -115,9 +116,14 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
 
   return (
     <div className="relative">
+      {/* Image wrapper: square on mobile, fixed height on md+ (keeps old desktop look) */}
       <div
         ref={wrapRef}
-        className="relative overflow-hidden rounded-2xl shadow-md border border-gray-200 bg-gradient-to-br from-gray-50 to-white cursor-zoom-in"
+        className="
+          group relative overflow-hidden rounded-2xl shadow-md border border-gray-200
+          bg-gradient-to-br from-gray-50 to-white cursor-zoom-in
+          aspect-square md:aspect-auto md:h-[420px] lg:h-[520px]
+        "
         onClick={() => setFullscreen(true)}
         onMouseEnter={() => setShowLens(true)}
         onMouseLeave={() => setShowLens(false)}
@@ -128,7 +134,10 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
             key={mainImage}
             src={mainImage}
             alt="product"
-            className="w-full h-[420px] object-cover"
+            className="
+              absolute inset-0 w-full h-full
+              object-contain md:object-cover
+            "
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -137,10 +146,13 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
           />
         </AnimatePresence>
 
-        {/* Lens */}
+        {/* Lens — desktop only */}
         {showLens && (
           <div
-            className="pointer-events-none absolute rounded-full ring-2 ring-white/70 shadow-xl"
+            className="
+              pointer-events-none absolute rounded-full ring-2 ring-white/70 shadow-xl
+              hidden md:block
+            "
             style={{
               width: 180,
               height: 180,
@@ -187,7 +199,7 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
         </div>
       </div>
 
-      {/* Thumbs */}
+      {/* Thumbnails */}
       {hasImages && (
         <div className="flex gap-2 mt-4 justify-center flex-wrap">
           {images.map((img, idx) => (
@@ -195,12 +207,16 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
               key={idx}
               type="button"
               onClick={() => setActive(idx)}
-              className={`w-20 h-20 border-2 rounded-md overflow-hidden transition ${
+              className={`w-16 h-16 md:w-20 md:h-20 border-2 rounded-md overflow-hidden transition ${
                 idx === active ? "border-amber-500 shadow" : "border-gray-200 hover:border-gray-400"
               }`}
               aria-label={`Image ${idx + 1}`}
             >
-              <img src={img.url} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
+              <img
+                src={img.url}
+                alt={`thumb-${idx}`}
+                className="w-full h-full object-cover"
+              />
             </button>
           ))}
         </div>
@@ -212,7 +228,14 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
 function StickyMobileCTA({ priceBlock, addToCart, buyNow, hidden }) {
   if (hidden) return null;
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-t border-gray-200 px-4 py-3 flex items-center justify-between lg:hidden">
+    <div
+      className="
+        fixed bottom-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur
+        supports-[backdrop-filter]:bg-white/60 border-t border-gray-200
+        px-4 py-3 flex items-center justify-between lg:hidden
+      "
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
+    >
       <div>
         {priceBlock.discountPct > 0 && (
           <span className="text-sm line-through text-gray-400 mr-2">
