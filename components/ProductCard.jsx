@@ -44,7 +44,6 @@ function ProductCard({ product }) {
     [product.slug, product.id]
   );
 
-  // Price logic
   const price = Number(product.price) || 0;
   const discount = Number(product.discountPercent) || 0;
   const originalPrice = discount > 0 ? Math.round(price / (1 - discount / 100)) : null;
@@ -70,7 +69,7 @@ function ProductCard({ product }) {
 
   return (
     <>
-      <div className="group relative bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg transition-all duration-500">
+      <div className="group relative bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg transition-all duration-500 w-full max-w-full min-w-0">
 
         {/* Discount Badge */}
         {discount > 0 && (
@@ -79,9 +78,9 @@ function ProductCard({ product }) {
           </span>
         )}
 
-        {/* Image */}
-        <Link href={detailPath} className="block" aria-label={`${product.title} details`}>
-          <div className="aspect-square w-full overflow-hidden bg-gray-50 relative">
+        {/* Image Container */}
+        <Link href={detailPath} className="block relative w-full" aria-label={`${product.title} details`}>
+          <div className="aspect-square w-full overflow-hidden bg-gray-50 relative max-w-full">
             <img
               src={`${primary}?f_auto,q_auto,w=480`}
               alt={product.title}
@@ -104,7 +103,7 @@ function ProductCard({ product }) {
           </div>
         </Link>
 
-        {/* Wishlist Button (mobile safe area + a11y) */}
+        {/* Wishlist Button */}
         <button
           type="button"
           onClick={handleToggleWishlist}
@@ -117,8 +116,8 @@ function ProductCard({ product }) {
           <Heart size={18} fill={wished ? "white" : "none"} />
         </button>
 
-        {/* Info */}
-        <div className="p-2 sm:p-3 md:p-4 text-center">
+        {/* Info Section */}
+        <div className="p-2 sm:p-3 md:p-4 text-center min-w-0">
           <Link href={detailPath} aria-label={`Open ${product.title}`}>
             <h3 className="font-medium text-sm md:text-lg text-gray-900 line-clamp-2 hover:text-yellow-600">
               {product.title}
@@ -128,7 +127,7 @@ function ProductCard({ product }) {
             </p>
           </Link>
 
-          {/* Price */}
+          {/* Price Section */}
           <div className="mt-1 sm:mt-2 flex items-center justify-center gap-2">
             {originalPrice && (
               <span className="text-xs md:text-sm text-gray-400 line-through">
@@ -139,7 +138,7 @@ function ProductCard({ product }) {
           </div>
         </div>
 
-        {/* Hover buttons — desktop only */}
+        {/* Hover Buttons (Desktop Only) */}
         <div className="hidden md:flex opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-500 justify-center gap-2 pb-4">
           <button
             type="button"

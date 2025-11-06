@@ -165,6 +165,27 @@ section {
 }
 
 /* =========================================================
+   LAYOUT GUARD — Horizontal overflow killer
+   (Prevents the whole page from shifting/cropping on small screens)
+   ========================================================= */
+html, body, #__next {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden !important;
+}
+
+/* Predictable sizing everywhere */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Media should never push layout wider than viewport */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* =========================================================
    RESPONSIVE FIXES (Improved — Final Mobile Cleanup)
    ========================================================= */
 @media (max-width: 640px) {

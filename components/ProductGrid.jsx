@@ -145,7 +145,6 @@ function ProductGrid({
     }
   }, [lastDoc, loadingMore, applyFilters, dedupeMerge, pageSize]);
 
-  // Prefetch before user hits the bottom (smoother on mobile)
   const lastProductRef = useCallback(
     (node) => {
       if (observerRef.current) observerRef.current.disconnect();
@@ -172,10 +171,10 @@ function ProductGrid({
     };
   }, [fetchInitial]);
 
-  // Loading skeleton
+  // ✅ Loading skeleton (responsive-safe now)
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 animate-pulse">
+      <div className="w-full max-w-full overflow-x-hidden grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 px-2">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="h-64 rounded-xl bg-gray-200" />
         ))}
@@ -183,10 +182,10 @@ function ProductGrid({
     );
   }
 
-  // Empty state
+  // ✅ No products
   if (!products.length) {
     return (
-      <div className="text-center py-20 text-gray-500">
+      <div className="w-full max-w-full overflow-x-hidden text-center py-20 text-gray-500 px-4">
         <img src="/empty-state.svg" alt="No products" className="mx-auto mb-4 w-32 opacity-70" />
         <p className="text-lg font-medium">No products found</p>
         <p className="text-sm text-gray-400 mt-1">
@@ -196,27 +195,29 @@ function ProductGrid({
     );
   }
 
-  // Final Grid
+  // ✅ Final Product Grid
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 w-full">
-      <AnimatePresence>
-        {products.map((p, idx) => {
-          const isLast = idx === products.length - 1;
-          return (
-            <motion.div
-              key={p.id}
-              ref={isLast ? lastProductRef : null}
-              className="p-1 sm:p-2"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <ProductCard product={p} />
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+    <div className="w-full max-w-full overflow-x-hidden">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 px-2">
+        <AnimatePresence>
+          {products.map((p, idx) => {
+            const isLast = idx === products.length - 1;
+            return (
+              <motion.div
+                key={p.id}
+                ref={isLast ? lastProductRef : null}
+                className="p-1 sm:p-2 min-w-0"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                <ProductCard product={p} />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
 
       {loadingMore && (
         <div className="col-span-full flex justify-center py-6" aria-live="polite">

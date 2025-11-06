@@ -104,10 +104,13 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
   const [lensBg, setLensBg] = useState(mainImage);
   const wrapRef = useRef(null);
 
+  const rafRef = useRef(null);
   const onMouseMove = useCallback((e) => {
     if (!wrapRef.current) return;
     const r = wrapRef.current.getBoundingClientRect();
-    setLensPos({ x: e.clientX - r.left, y: e.clientY - r.top });
+    const next = { x: e.clientX - r.left, y: e.clientY - r.top };
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => setLensPos(next));
   }, []);
 
   useEffect(() => {
@@ -134,6 +137,7 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
             key={mainImage}
             src={mainImage}
             alt="product"
+            onError={(e) => (e.currentTarget.src = "/products/placeholder.png")}
             className="
               absolute inset-0 w-full h-full
               object-contain md:object-cover
@@ -216,6 +220,7 @@ function Gallery({ images, active, setActive, fullscreen, setFullscreen }) {
                 src={img.url}
                 alt={`thumb-${idx}`}
                 className="w-full h-full object-cover"
+                onError={(e) => (e.currentTarget.src = "/products/placeholder.png")}
               />
             </button>
           ))}
@@ -272,7 +277,7 @@ function RelatedProducts({ related }) {
         return (
             <Link key={p.id} href={href} className="min-w-[220px] border rounded-xl bg-white hover:shadow-md transition">
               <div className="aspect-[4/3] overflow-hidden rounded-t-xl">
-                <img src={imgs?.[0]?.url || "/products/placeholder.png"} alt={p.title} className="w-full h-full object-cover" />
+                <img src={imgs?.[0]?.url || "/products/placeholder.png"} alt={p.title} onError={(e) => (e.currentTarget.src = "/products/placeholder.png")} className="w-full h-full object-cover" />
               </div>
               <div className="p-3">
                 <p className="text-sm font-medium line-clamp-1">{p.title}</p>
@@ -716,7 +721,8 @@ export default function ProductDetailPage() {
         : null,
     [product, pricingSettings]
   );
-  const priceBlock = useMemo(() => (gold ? { ...gold } : retail), [gold, retail]);
+  const goldCalc = gold; // alias for clarity
+  const priceBlock = useMemo(() => (goldCalc ? { ...goldCalc } : retail), [goldCalc, retail]);
 
   const wished = useMemo(
     () => (product?.id ? inWishlist?.(product.id) : false),
@@ -1076,22 +1082,22 @@ export default function ProductDetailPage() {
                 <div className="text-sm space-y-2">
                   <div className="flex justify-between">
                     <span>Gold Value</span>
-                    <span>₹{fmtINR(goldPrice(product, pricingSettings).goldValue)}</span>
+                    <span>₹{fmtINR(goldCalc?.goldValue ?? goldPrice(product, pricingSettings).goldValue)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>
                       Making ({product.makingPct ?? pricingSettings?.makingPct ?? 12}%)
                     </span>
-                    <span>₹{fmtINR(goldPrice(product, pricingSettings).making)}</span>
+                    <span>₹{fmtINR(goldCalc?.making ?? goldPrice(product, pricingSettings).making)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>GST ({product.gstPct ?? pricingSettings?.gstPct ?? 3}%)</span>
-                    <span>₹{fmtINR(goldPrice(product, pricingSettings).gst)}</span>
+                    <span>₹{fmtINR(goldCalc?.gst ?? goldPrice(product, pricingSettings).gst)}</span>
                   </div>
                   <div className="border-t my-2" />
                   <div className="flex justify-between font-semibold text-gray-900">
                     <span>Total</span>
-                    <span>₹{fmtINR(goldPrice(product, pricingSettings).total)}</span>
+                    <span>₹{fmtINR(goldCalc?.total ?? goldPrice(product, pricingSettings).total)}</span>
                   </div>
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
@@ -1262,6 +1268,7 @@ export default function ProductDetailPage() {
                 key={active}
                 src={mainImage}
                 alt="fullscreen"
+                onError={(e) => (e.currentTarget.src = "/products/placeholder.png")}
                 className="w-full h-[80vh] object-contain"
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}

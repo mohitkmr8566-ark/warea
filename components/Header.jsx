@@ -20,10 +20,7 @@ function Header() {
   const { user, loading } = useAuth();
   const isAdminUser = useMemo(() => isAdmin(user), [user]);
 
-  const cartCount = useMemo(
-    () => cartItems.reduce((sum, item) => sum + (item.qty || 1), 0),
-    [cartItems]
-  );
+  const cartCount = useMemo(() => cartItems.reduce((sum, item) => sum + (item.qty || 1), 0), [cartItems]);
   const wishCount = useMemo(() => wishlist.length, [wishlist]);
 
   const prevCartRef = useRef(cartCount);
@@ -38,10 +35,11 @@ function Header() {
 
   const toggleMenu = useCallback(() => setOpen((p) => !p), []);
 
+  // ✅ Loading Skeleton (unchanged)
   if (loading) {
     return (
       <header className="sticky top-0 z-40 bg-white border-b shadow-sm">
-        <div className="page-container flex items-center justify-between py-3 animate-pulse">
+        <div className="max-w-[100%] w-full mx-auto px-4 sm:px-6 md:px-10 flex items-center justify-between py-3 animate-pulse">
           <div className="flex items-center gap-2">
             <div className="bg-gray-300 rounded-full w-10 h-10" />
             <div className="bg-gray-300 h-6 w-24 rounded" />
@@ -57,10 +55,10 @@ function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
-      <div className="page-container flex items-center justify-between gap-2 sm:gap-4 py-2 md:py-3 overflow-hidden">
+    <header className="sticky top-0 z-50 bg-white border-b shadow-sm w-full max-w-full">
+      <div className="w-full max-w-[100%] mx-auto px-4 sm:px-6 md:px-10 flex items-center justify-between gap-2 sm:gap-4 py-2 md:py-3">
 
-        {/* ✅ Logo (no wrapping on small screens) */}
+        {/* ✅ Logo */}
         <Link href="/" className="flex items-center gap-2 flex-shrink-0">
           <Image
             src="/logo.png"
@@ -74,7 +72,7 @@ function Header() {
           </span>
         </Link>
 
-        {/* ✅ Desktop Nav */}
+        {/* ✅ Desktop Navigation */}
         <nav className="hidden md:flex gap-8 text-base font-medium flex-1">
           <Link href="/">Home</Link>
           <Link href="/shop">Shop</Link>
@@ -88,36 +86,28 @@ function Header() {
           )}
         </nav>
 
-        {/* ✅ Right Icons */}
+        {/* ✅ Right Icons (no clipping issue now) */}
         <div className="flex items-center gap-3 sm:gap-4 md:gap-5 flex-shrink-0">
 
-          {/* Search */}
           <Link href="/search" className="icon-btn">
             <Search size={18} />
             <span className="hidden sm:block text-[9px] md:text-[10px] mt-0.5">Search</span>
           </Link>
 
-          {/* Wishlist */}
           <Link href="/wishlist" className="icon-btn relative">
             <Heart size={18} />
-            {wishCount > 0 && (
-              <span className="badge">{wishCount}</span>
-            )}
+            {wishCount > 0 && <span className="badge">{wishCount}</span>}
             <span className="hidden sm:block text-[9px] md:text-[10px] mt-0.5">Wishlist</span>
           </Link>
 
-          {/* Cart */}
           <Link href="/cart" className="icon-btn relative">
             <span className={`${bump ? "cart-bump" : ""} inline-flex`}>
               <ShoppingBag size={18} />
             </span>
-            {cartCount > 0 && (
-              <span className="badge">{cartCount}</span>
-            )}
+            {cartCount > 0 && <span className="badge">{cartCount}</span>}
             <span className="hidden sm:block text-[9px] md:text-[10px] mt-0.5">Cart</span>
           </Link>
 
-          {/* Profile */}
           <Link href="/profile" className="icon-btn relative">
             <User size={18} />
             {user && isAdminUser && (
@@ -127,16 +117,15 @@ function Header() {
             )}
           </Link>
 
-          {/* Mobile Menu Button */}
           <button onClick={toggleMenu} className="md:hidden icon-btn" aria-label="Toggle Menu">
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </div>
 
-      {/* ✅ Mobile Nav */}
+      {/* ✅ Mobile Dropdown */}
       {open && (
-        <div className="md:hidden bg-white border-t p-4 flex flex-col gap-3 text-base font-medium pb-[env(safe-area-inset-bottom,20px)]">
+        <div className="md:hidden bg-white border-t p-4 flex flex-col gap-3 text-base font-medium pb-[env(safe-area-inset-bottom,20px)] w-full">
           {["/", "/shop", "/about", "/contact", "/help", "/profile"].map((link) => (
             <Link key={link} href={link} onClick={toggleMenu}>
               {link === "/" ? "Home" : link.replace("/", "").toUpperCase()}

@@ -3,8 +3,6 @@ import Hero from "@/components/Hero";
 import CategorySection from "@/components/CategorySection";
 import ProductGrid from "@/components/ProductGrid";
 import { motion } from "framer-motion";
-
-// SEO helpers
 import {
   getBaseUrl,
   getOrganizationSchema,
@@ -17,7 +15,6 @@ import {
 export default function HomePage() {
   const baseUrl = getBaseUrl();
 
-  // Static featured products for schema
   const featuredProducts = [
     {
       name: "Gold Plated Heart Earrings",
@@ -56,19 +53,15 @@ export default function HomePage() {
   return (
     <>
       <Head>
-        {/* Networking performance hints */}
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
-
         <link rel="preload" as="image" href="/hero-banner.webp" />
         <link rel="preload" as="font" href="/fonts/serif.woff2" type="font/woff2" crossOrigin="anonymous" />
-
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="robots" content="index,follow,max-image-preview:large" />
         <meta name="theme-color" content="#111111" />
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-
         <title>Warea Jewellery | Handcrafted Gold & Silver Jewellery Online in India</title>
         <meta
           name="description"
@@ -78,12 +71,9 @@ export default function HomePage() {
           name="keywords"
           content="warea, jewellery, gold, silver, handcrafted jewellery, earrings, necklaces, bracelets, BIS hallmark, buy jewellery online"
         />
-
         <link rel="canonical" href={baseUrl} />
         <link rel="alternate" hrefLang="x-default" href={baseUrl} />
         <link rel="alternate" hrefLang="en-in" href={baseUrl} />
-
-        {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:title" content="Warea Jewellery | Elegant Gold & Silver Jewellery" />
         <meta
@@ -92,8 +82,6 @@ export default function HomePage() {
         />
         <meta property="og:url" content={baseUrl} />
         <meta property="og:image" content={`${baseUrl}/logo.png`} />
-
-        {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Warea Jewellery | Elegant Gold & Silver Jewellery" />
         <meta
@@ -101,28 +89,29 @@ export default function HomePage() {
           content="Discover timeless handcrafted gold & silver jewellery at Warea Creations."
         />
         <meta name="twitter:image" content={`${baseUrl}/logo.png`} />
-
-        {/* JSON-LD Schemas */}
         {schemas.map((schema, i) => (
           <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
         ))}
       </Head>
 
-      {/* 📱 Guard against horizontal scroll + consistent page gutters */}
-      <main className="w-full overflow-x-hidden">
-        {/* Hero stays full-bleed as designed */}
-        <Hero />
+      {/* ✅ Full-width safe layout */}
+      <main className="w-full max-w-full overflow-x-hidden">
 
-        {/* Categories */}
-        <section className="py-10 sm:py-14 border-t border-gray-100 animate-fadeIn">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* ✅ Hero stays full-bleed but isolated */}
+        <div className="w-full overflow-hidden">
+          <Hero />
+        </div>
+
+        {/* ✅ Categories */}
+        <section className="py-10 sm:py-14 border-t border-gray-100 animate-fadeIn w-full overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
             <CategorySection />
           </div>
         </section>
 
-        {/* Featured Products */}
-        <section className="py-8 sm:py-14 border-t border-gray-100 animate-fadeIn">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* ✅ Featured Products */}
+        <section className="py-8 sm:py-14 border-t border-gray-100 animate-fadeIn w-full overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -134,8 +123,6 @@ export default function HomePage() {
                 Featured Products
               </h2>
             </motion.div>
-
-            {/* Only Featured; grid/card already mobile-safe */}
             <ProductGrid onlyFeatured />
           </div>
         </section>

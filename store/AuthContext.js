@@ -4,6 +4,7 @@ import {
   signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
@@ -17,7 +18,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Auth state change listener
+  // ✅ Track Auth State
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser || null);
@@ -33,13 +34,12 @@ export function AuthProvider({ children }) {
       } else {
         localStorage.removeItem("user");
       }
-
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  // ✅ Restore return-to navigation after login
+  // ✅ Redirect back to page after login
   useEffect(() => {
     if (user && typeof window !== "undefined") {
       const returnTo = localStorage.getItem("returnTo");
@@ -55,10 +55,10 @@ export function AuthProvider({ children }) {
     try {
       const res = await signInWithEmailAndPassword(auth, email, password);
       setUser(res.user);
-      toast.success("Logged in ✅");
+      toast.success("Welcome back! ✅");
       return res.user;
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Login failed ❌");
       throw err;
     }
   };
@@ -75,10 +75,10 @@ export function AuthProvider({ children }) {
           name: name || "Customer",
         })
       );
-      toast.success("Account created ✅");
+      toast.success("Account created successfully ✅");
       return res.user;
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Signup failed ❌");
       throw err;
     }
   };
@@ -92,7 +92,18 @@ export function AuthProvider({ children }) {
       toast.success("Signed in with Google ✅");
       return res.user;
     } catch (err) {
-      toast.error(err.message);
+      toast.error("Google Sign-in failed ❌");
+      throw err;
+    }
+  };
+
+  // ✅ Forgot Password
+  const resetPassword = async (email) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success("Password reset link sent to your email 📩");
+    } catch (err) {
+      toast.error(err.message || "Failed to send reset link ❌");
       throw err;
     }
   };
@@ -102,11 +113,21 @@ export function AuthProvider({ children }) {
     await signOut(auth);
     setUser(null);
     localStorage.removeItem("user");
-    toast.success("Logged out");
+    toast.success("Logged out ✅");
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, googleLogin }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        signup,
+        logout,
+        googleLogin,
+        resetPassword, // ✅ Added
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
