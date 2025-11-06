@@ -11,7 +11,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
   const { inWishlist, toggleItem } = useWishlist() || {};
   if (!product) return null;
 
-  // Normalize images
+  // 🖼 Normalize images
   const images = useMemo(() => {
     if (Array.isArray(product.images) && product.images.length) return product.images;
     const fallback =
@@ -32,33 +32,44 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
       : toast.success(`${product.title} added to Wishlist ❤️`);
   };
 
-  // Close on Esc key
+  // ⌨️ Close on Esc key
   useEffect(() => {
     const esc = (e) => e.key === "Escape" && onClose?.();
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
 
+  // 🚫 Prevent background scroll when modal open
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (product) document.body.classList.add("no-scroll");
+    return () => document.body.classList.remove("no-scroll");
+  }, [product]);
+
   return (
     <AnimatePresence>
-      {/* Overlay */}
       <motion.div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[999] overflow-x-hidden"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[999]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
       >
-        {/* Modal Box */}
+        {/* ⚪ Modal Box */}
         <motion.div
-          className="relative bg-white rounded-2xl shadow-2xl w-[92%] sm:w-[90%] max-w-3xl max-w-full overflow-hidden"
+          className="
+            relative bg-white rounded-2xl shadow-2xl
+            w-[94vw] sm:w-[90%] max-w-3xl
+            overflow-hidden overflow-x-hidden
+            max-h-[90vh] flex flex-col
+          "
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ duration: 0.2 }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Close Button */}
+          {/* ❌ Close */}
           <button
             type="button"
             onClick={onClose}
@@ -68,13 +79,13 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
             <X size={20} />
           </button>
 
-          {/* Image Carousel */}
-          <div className="relative w-full h-[300px] sm:h-[420px] bg-gray-50 overflow-hidden">
+          {/* 🖼 Image Carousel */}
+          <div className="relative w-full h-[320px] sm:h-[420px] bg-gray-50 overflow-hidden flex-shrink-0">
             <img
               key={idx}
               src={images[idx]}
               alt={`${product.title} Image ${idx + 1}`}
-              className="w-full h-full object-cover max-w-full"
+              className="w-full h-full object-contain"
               onError={(e) => (e.currentTarget.src = "/products/placeholder.png")}
             />
 
@@ -111,8 +122,8 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
             )}
           </div>
 
-          {/* Details */}
-          <div className="p-5 sm:p-6 overflow-y-auto max-h-[50vh] w-full">
+          {/* 📜 Details */}
+          <div className="p-5 sm:p-6 overflow-y-auto flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="w-full">
                 <h2 className="text-lg sm:text-2xl font-semibold text-gray-900 line-clamp-2">
@@ -125,7 +136,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
                 )}
               </div>
 
-              {/* Wishlist BTN */}
+              {/* ❤️ Wishlist Button */}
               <button
                 type="button"
                 aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
@@ -138,17 +149,17 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
               </button>
             </div>
 
-            {/* Price */}
+            {/* 💰 Price */}
             <div className="mt-3 text-2xl font-bold text-gray-800">₹{product.price}</div>
 
-            {/* Description */}
+            {/* 📝 Description */}
             {product.description && (
               <p className="text-gray-700 mt-3 text-sm sm:text-base leading-relaxed">
                 {product.description}
               </p>
             )}
 
-            {/* Buttons */}
+            {/* 🛒 Buttons */}
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
