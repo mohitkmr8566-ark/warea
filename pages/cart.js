@@ -6,6 +6,7 @@ import { Trash2, Plus, Minus } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
+/* ✅ Get first valid product image */
 function firstImage(item) {
   if (Array.isArray(item?.images) && item.images.length) {
     const v = item.images[0];
@@ -53,13 +54,13 @@ export default function CartPage() {
         </div>
       </section>
 
-      <div className="page-container py-10">
+      <div className="max-w-7xl mx-auto px-4 py-10">
         {items.length === 0 ? (
           <div className="text-center py-16">
             <img
               src="/empty-state.svg"
               alt="Empty Cart"
-              className="mx-auto mb-6 w-44 opacity-70"
+              className="mx-auto mb-6 w-40 opacity-70"
             />
             <h2 className="text-xl font-semibold mb-2">Your cart is empty</h2>
             <p className="text-gray-500 mb-6">
@@ -121,10 +122,7 @@ export default function CartPage() {
                           <div className="flex items-center border rounded-full overflow-hidden shadow-sm">
                             <button
                               className="px-3 py-1.5 hover:bg-gray-100 transition"
-                              onClick={() => {
-                                updateQuantity?.(item.id, Math.max(1, (item.qty || 1) - 1));
-                                toast.success(`Quantity updated`);
-                              }}
+                              onClick={() => updateQuantity?.(item.id, Math.max(1, (item.qty || 1) - 1))}
                             >
                               <Minus size={14} />
                             </button>
@@ -132,19 +130,17 @@ export default function CartPage() {
                               type="number"
                               min={1}
                               value={item.qty || 1}
-                              onChange={(e) => {
-                                const v = Math.max(1, Number(e.target.value) || 1);
-                                updateQuantity?.(item.id, v);
-                                toast.success(`Quantity updated`);
-                              }}
+                              onChange={(e) =>
+                                updateQuantity?.(
+                                  item.id,
+                                  Math.max(1, Number(e.target.value) || 1)
+                                )
+                              }
                               className="w-14 text-center border-0 focus:ring-0 font-medium"
                             />
                             <button
                               className="px-3 py-1.5 hover:bg-gray-100 transition"
-                              onClick={() => {
-                                updateQuantity?.(item.id, (item.qty || 1) + 1);
-                                toast.success(`Quantity updated`);
-                              }}
+                              onClick={() => updateQuantity?.(item.id, (item.qty || 1) + 1)}
                             >
                               <Plus size={14} />
                             </button>
@@ -180,7 +176,7 @@ export default function CartPage() {
                 </span>
               </div>
               <p className="text-sm text-gray-500 mt-2">
-                Taxes &amp; shipping calculated at checkout.
+                Taxes & shipping calculated at checkout.
               </p>
 
               <div className="mt-6 flex flex-col gap-3">

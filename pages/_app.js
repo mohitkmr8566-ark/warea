@@ -78,7 +78,7 @@ export default function MyApp({ Component, pageProps, router }) {
         />
       </Head>
 
-      {/* ✅ GTM / GA4 Scripts — same logic, with env fallback */}
+      {/* ✅ GTM / GA4 Scripts */}
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
         strategy="afterInteractive"
@@ -94,24 +94,26 @@ export default function MyApp({ Component, pageProps, router }) {
         `}
       </Script>
 
-      {/* ✅ Default SEO (unchanged) */}
+      {/* ✅ Default SEO */}
       <DefaultSeo {...SEO} />
 
-      {/* ✅ Providers & Layout (unchanged) */}
-      <CartProvider>
-        <WishlistProvider>
-          <AuthProvider>
-            <Toaster position="top-right" />
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className={isHomePage ? "flex-1 w-full" : "flex-1 page-container"}>
-                <Component {...pageProps} />
-              </main>
-              <Footer />
-            </div>
-          </AuthProvider>
-        </WishlistProvider>
-      </CartProvider>
+      {/* ✅ Global Overflow-Safe Wrapper */}
+      <div className="w-full max-w-full overflow-x-hidden">
+        <CartProvider>
+          <WishlistProvider>
+            <AuthProvider>
+              <Toaster position="top-right" />
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className={isHomePage ? "flex-1 w-full" : "flex-1 page-container"}>
+                  <Component {...pageProps} />
+                </main>
+                <Footer />
+              </div>
+            </AuthProvider>
+          </WishlistProvider>
+        </CartProvider>
+      </div>
 
       <SpeedInsights />
     </>

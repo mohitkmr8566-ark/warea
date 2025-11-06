@@ -1,3 +1,4 @@
+// pages/login.js
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,14 +6,19 @@ import { useRouter } from "next/router";
 import { useAuth } from "@/store/AuthContext";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import { Eye, EyeOff } from "lucide-react";
+import ForgotPasswordModal from "@/components/auth/ForgotPasswordModal";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, googleLogin } = useAuth();
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
-  // 🟡 Save return path (so user returns to previous page after login)
+  // Save last visited page before login
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("returnTo", document.referrer || "/profile");
@@ -45,7 +51,7 @@ export default function LoginPage() {
 
   return (
     <>
-      {/* ✨ Header Section */}
+      {/* Header Section */}
       <section className="bg-gradient-to-b from-gray-50 to-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-12 text-center">
           <motion.h1
@@ -57,12 +63,12 @@ export default function LoginPage() {
             Welcome Back
           </motion.h1>
           <p className="text-gray-500 text-sm sm:text-base max-w-2xl mx-auto">
-            Log in to access your orders, wishlist, and account details.
+            Log in to access your orders, wishlist, and account.
           </p>
         </div>
       </section>
 
-      {/* 🧾 Login Card */}
+      {/* Login Form */}
       <main className="px-4 py-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -71,23 +77,49 @@ export default function LoginPage() {
           className="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-lg border border-gray-100"
         >
           <h2 className="text-2xl font-semibold text-center mb-6">Login</h2>
+
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email Field */}
             <input
               type="email"
               placeholder="Email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 transition"
+              className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition"
               required
             />
-            <input
-              type="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 transition"
-              required
-            />
+
+            {/* Password Field with Toggle */}
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className="w-full border rounded-lg px-4 py-3 pr-12 focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 p-1 text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            {/* Forgot Password Link */}
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => setForgotOpen(true)}
+                className="text-sm text-amber-600 hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </div>
+
+            {/* Login Button */}
             <button
               type="submit"
               disabled={loading}
@@ -97,27 +129,34 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-5">
-            <button
-              onClick={handleGoogle}
-              className="w-full border rounded-full py-3 flex items-center justify-center gap-2 hover:bg-gray-50 transition"
-            >
-              <img src="/google-icon.svg" alt="Google" className="w-5 h-5" />
-              Continue with Google
-            </button>
+          {/* Divider */}
+          <div className="my-5 flex items-center">
+            <span className="flex-1 h-px bg-gray-200" />
+            <span className="px-3 text-xs text-gray-400">OR</span>
+            <span className="flex-1 h-px bg-gray-200" />
           </div>
 
+          {/* Google Login */}
+          <button
+            onClick={handleGoogle}
+            className="w-full border rounded-full py-3 flex items-center justify-center gap-2 hover:bg-gray-50 transition"
+          >
+            <img src="/google-icon.svg" alt="Google" className="w-5 h-5" />
+            Continue with Google
+          </button>
+
+          {/* Signup Link */}
           <p className="text-center mt-6 text-sm text-gray-500">
             Don’t have an account?{" "}
-            <a
-              href="/signup"
-              className="text-yellow-600 hover:underline font-medium"
-            >
+            <a href="/signup" className="text-amber-600 hover:underline font-medium">
               Sign up
             </a>
           </p>
         </motion.div>
       </main>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal open={forgotOpen} onClose={() => setForgotOpen(false)} />
     </>
   );
 }

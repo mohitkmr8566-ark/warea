@@ -1,4 +1,4 @@
-// ✅ pages/shop.js (final responsive+layout safe version)
+// ✅ pages/shop.js
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -105,56 +105,59 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: itemListJson }} />
       </Head>
 
-      {/* ✅ MAIN WRAPPER - no horizontal scroll, consistent padding */}
-      <main className="w-full overflow-x-hidden">
+      {/* ✅ MAIN WRAPPER - hardened against horizontal overflow */}
+      <main className="w-full max-w-full overflow-x-hidden">
         {/* ✅ Banner */}
-        <section className="bg-gradient-to-b from-gray-50 to-white border-b">
+        <section className="bg-gradient-to-b from-gray-50 to-white/90 border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-3xl sm:text-4xl font-serif font-bold"
+              className="text-3xl sm:text-4xl font-serif font-bold tracking-tight"
             >
               {heading}
             </motion.h1>
-            <p className="text-gray-500 text-sm sm:text-base max-w-2xl mx-auto">
+            <p className="text-gray-500 text-sm sm:text-base max-w-2xl mx-auto mt-2">
               Discover timeless designs and modern elegance.
             </p>
           </div>
         </section>
 
-        {/* ✅ Categories Row – fully padded, scrollable if needed */}
+        {/* ✅ Categories Row – fully padded, scrollable, no right cut */}
         <div className="border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide whitespace-nowrap">
-              {categories.map((cat) => {
-                const isActive = selectedCategory === cat;
-                return (
-                  <Link
-                    key={cat}
-                    href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
-                    shallow
-                    className={`px-5 py-2.5 rounded-full text-sm border transition font-medium ${
-                      isActive
-                        ? "bg-black text-white border-black shadow"
-                        : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
-                    }`}
-                  >
-                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                  </Link>
-                );
-              })}
+          <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
+            {/* edge-to-edge scroll on mobile while protected by outer container */}
+            <div className="-mx-4 sm:mx-0">
+              <div className="flex gap-3 overflow-x-auto no-scrollbar whitespace-nowrap px-4 sm:px-0 pr-6 min-w-0 snap-x">
+                {categories.map((cat) => {
+                  const isActive = selectedCategory === cat;
+                  return (
+                    <Link
+                      key={cat}
+                      href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
+                      shallow
+                      className={`px-5 py-2.5 rounded-full text-sm border transition font-medium snap-start ${
+                        isActive
+                          ? "bg-black text-white border-black shadow"
+                          : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
+                      }`}
+                    >
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ✅ Sticky Filters */}
-        <div className="sticky top-[64px] bg-white/90 backdrop-blur-md border-b z-30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center gap-4">
+        {/* ✅ Sticky Filters – safe width & subtle UI polish */}
+        <div className="sticky top-[64px] bg-white/90 backdrop-blur-md border-b z-30 w-full">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
             <button
               onClick={() => setShowFilters((p) => !p)}
-              className="lg:hidden flex items-center gap-2 border px-4 py-2 rounded-md text-sm"
+              className="lg:hidden flex items-center gap-2 border px-4 py-2 rounded-md text-sm bg-white hover:bg-gray-50"
               type="button"
             >
               <SlidersHorizontal size={16} />
@@ -162,12 +165,12 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
             </button>
 
             {/* Price Filter */}
-            <div className={`${showFilters ? "block" : "hidden lg:flex"} items-center gap-3`}>
+            <div className={`${showFilters ? "flex" : "hidden lg:flex"} items-center gap-3`}>
               <label className="text-sm font-medium">Price:</label>
               <select
                 value={`${priceRange[0]}-${priceRange[1]}`}
                 onChange={handlePriceChange}
-                className="border px-3 py-2 text-sm rounded-md"
+                className="border px-3 py-2 text-sm rounded-md bg-white"
               >
                 <option value="0-10000">All Prices</option>
                 <option value="0-500">Under ₹500</option>
@@ -182,7 +185,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="border px-3 py-2 text-sm rounded-md"
+                className="border px-3 py-2 text-sm rounded-md bg-white"
               >
                 <option value="">Sort By</option>
                 <option value="popular">Most Popular</option>
@@ -194,12 +197,12 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
           </div>
         </div>
 
-        {/* ✅ Product Grid Wrapper */}
+        {/* ✅ Product Grid Wrapper – overflow safe */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10"
+          className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 overflow-x-hidden"
         >
           <ProductGrid
             category={selectedCategory}

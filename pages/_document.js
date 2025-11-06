@@ -5,11 +5,11 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
-        {/* ✅ Performance: DNS + Connection to Cloudinary */}
+        {/* ✅ Performance: Preconnect to Cloudinary for faster image loading */}
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
 
-        {/* ✅ Font Loading Optimization – Use preconnect only (better than preload+stylesheet spam) */}
+        {/* ✅ Google Fonts Performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -17,16 +17,17 @@ export default function Document() {
           rel="stylesheet"
         />
 
-        {/* ✅ Preload Hero Banner (LCP improvement) */}
+        {/* ✅ Preload LCP Hero Banner */}
         <link rel="preload" as="image" href="/hero-banner.webp" type="image/webp" />
 
-        {/* ✅ Meta & Theme */}
+        {/* ✅ General meta tags */}
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#fef3c7" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* ✅ Prevent dark mode flash, safe hydration for Next.js */}
-      <body className="bg-white text-gray-900" suppressHydrationWarning={true}>
+      {/* ✅ Prevent layout shift or dark mode flash */}
+      <body className="bg-white text-gray-900 min-h-screen overflow-x-hidden" suppressHydrationWarning>
         <Main />
         <NextScript />
       </body>

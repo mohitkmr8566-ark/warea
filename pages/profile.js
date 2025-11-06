@@ -193,7 +193,7 @@ export default function ProfilePage() {
 
   /* ---------------- Small UI Helpers ---------------- */
   const Empty = ({ img, title, hint, ctaHref, ctaLabel }) => (
-    <div className="text-center py-10">
+    <div className="w-full max-w-full overflow-x-hidden text-center py-10 px-4">
       {img && <img src={img} alt="" className="w-36 mx-auto mb-4 opacity-80" />}
       <p className="font-medium text-gray-800">{title}</p>
       {hint && <p className="text-gray-500 text-sm mb-4">{hint}</p>}
@@ -210,7 +210,6 @@ export default function ProfilePage() {
 
   /* ---------------- Payment + Replacement Logic ---------------- */
   const canRetryPayment = (o) => {
-    // Retry if pending/failed OR COD not completed and not cancelled/delivered
     const payStatus = o?.payment?.status?.toLowerCase?.();
     const payType = o?.payment?.type?.toLowerCase?.();
 
@@ -226,13 +225,12 @@ export default function ProfilePage() {
   };
 
   const canRequestReplacement = (o) => {
-    // Allow within 7 days of 'Delivered'
     if (o.status !== "Delivered") return false;
     const deliveredAt =
       toDateFlexible(o?.statusTimestamps?.Delivered) || ensureDate(o.createdAt);
     const now = new Date();
     const diffDays = (now - deliveredAt) / (1000 * 60 * 60 * 24);
-    return diffDays <= 7; // replacement window
+    return diffDays <= 7;
   };
 
   async function handlePayNow(order) {
@@ -243,12 +241,11 @@ export default function ProfilePage() {
       }
       await loadRazorpay();
 
-      // Create a Razorpay order via backend — send amount in INR (the API converts to paise)
       const res = await fetch("/api/razorpay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: Number(order.total || 0), // rupees
+          amount: Number(order.total || 0),
           receiptNote: `retry:${order.id}`,
         }),
       });
@@ -257,25 +254,22 @@ export default function ProfilePage() {
         throw new Error(data?.error || "Payment init failed");
       }
 
-      const rpOrder = data.order; // Razorpay order object
+      const rpOrder = data.order;
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: rpOrder.amount, // paise
+        amount: rpOrder.amount,
         currency: rpOrder.currency || "INR",
         name: "Warea Creations",
         description: `Payment for Order #${order.id.slice(0, 8)}`,
-        order_id: rpOrder.id, // Razorpay order id
+        order_id: rpOrder.id,
         prefill: {
           name: order?.customer?.name || profileInfo?.name || "",
           email: order?.userId || user?.email,
           contact: order?.customer?.phone || "",
         },
-        notes: {
-          platformOrderId: order.id,
-        },
+        notes: { platformOrderId: order.id },
         theme: { color: "#111111" },
         handler: async (response) => {
-          // Verify payment on backend and (re)save/mark order paid
           const verifyRes = await fetch("/api/verify-razorpay", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -284,12 +278,10 @@ export default function ProfilePage() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_signature: response.razorpay_signature,
               orderPayload: {
-                // provide details so backend can store/update
                 items: order.items || [],
                 total: order.total || 0,
                 address: order.customer || null,
                 user: { email: order.userId || user?.email || "" },
-                // you could also pass platformOrderId if backend supports reconciling
                 platformOrderId: order.id,
               },
             }),
@@ -301,13 +293,10 @@ export default function ProfilePage() {
           }
 
           toast.success("Payment verified!");
-          // Prefer server-returned orderId if present, else use existing id
           const finalId = verifyData?.orderId || order.id;
           router.push(`/order-success?id=${finalId}`);
         },
-        modal: {
-          ondismiss: () => toast("Payment cancelled"),
-        },
+        modal: { ondismiss: () => toast("Payment cancelled") },
       };
 
       const rzp = new window.Razorpay(options);
@@ -334,7 +323,7 @@ export default function ProfilePage() {
     if (!replaceModal.orderId) return;
     try {
       setReplaceModal((m) => ({ ...m, submitting: true }));
-      await addDoc(
+      const ref = await addDoc(
         collection(db, "orders", replaceModal.orderId, "replacements"),
         {
           reason: replaceModal.reason,
@@ -344,18 +333,18 @@ export default function ProfilePage() {
           userId: user?.email || "",
         }
       );
-      // 🔔 Fire-and-forget admin email notification
+      // Fire-and-forget admin notify
       fetch("/api/notify-replacement", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: replaceModal.orderId,
-          replacementId: ref.id, // could be added if needed
+          replacementId: ref.id,
           reason: replaceModal.reason,
           note: replaceModal.note,
           userEmail: user?.email || "",
         }),
-      }).catch(() => {}); // ignore errors
+      }).catch(() => {});
 
       toast.success("Replacement requested. We’ll contact you shortly.");
       setReplaceModal({
@@ -410,7 +399,9 @@ export default function ProfilePage() {
               "/products/placeholder.png"
             }
             alt={firstItem?.name || "Product"}
-            className="w-20 h-20 object-cover rounded-lg border"
+            className="w-20 h-20 object-cover rounded-lg border flex-shrink-0"
+            loading="lazy"
+            decoding="async"
           />
           <div className="min-w-0">
             <p className="font-semibold text-gray-900 text-base truncate">
@@ -445,9 +436,7 @@ export default function ProfilePage() {
                 <div
                   className="absolute left-0 top-0 h-full bg-green-500 rounded-full"
                   style={{
-                    width: `${
-                      (stepIndex / (STATUS_STEPS.length - 1)) * 100
-                    }%`,
+                    width: `${(stepIndex / (STATUS_STEPS.length - 1)) * 100}%`,
                   }}
                 />
               </div>
@@ -516,15 +505,17 @@ export default function ProfilePage() {
   /* ---------------- Auth Guard ---------------- */
   if (!user) {
     return (
-      <div className="text-center py-20">
-        <p className="text-gray-600 mb-4">You are not logged in.</p>
-        <button
-          onClick={() => router.push("/login")}
-          className="px-6 py-3 bg-amber-500 text-gray-900 rounded-lg hover:bg-amber-400 transition font-medium"
-        >
-          Login / Sign Up
-        </button>
-      </div>
+      <main className="w-full max-w-full overflow-x-hidden">
+        <div className="text-center py-20 px-4">
+          <p className="text-gray-600 mb-4">You are not logged in.</p>
+          <button
+            onClick={() => router.push("/login")}
+            className="px-6 py-3 bg-amber-500 text-gray-900 rounded-lg hover:bg-amber-400 transition font-medium"
+          >
+            Login / Sign Up
+          </button>
+        </div>
+      </main>
     );
   }
 
@@ -535,319 +526,310 @@ export default function ProfilePage() {
         <title>My Profile — Warea</title>
       </Head>
 
-      <div className="max-w-6xl mx-auto px-4 py-10">
-        <div className="flex flex-col sm:flex-row gap-8">
-          {/* Sidebar */}
-          <div className="w-full sm:w-64 flex flex-col items-center sm:items-start border rounded-xl p-5 shadow-sm bg-white">
-            {profileInfo.avatarUrl ? (
-              <img
-                src={profileInfo.avatarUrl}
-                className="w-20 h-20 rounded-full object-cover mb-3 ring-2 ring-amber-400"
-                alt="avatar"
-              />
-            ) : (
-              <div className="w-20 h-20 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-2xl font-semibold mb-3 ring-2 ring-amber-400">
-                {initials(profileInfo.name || user?.name)}
+      <main className="w-full max-w-full overflow-x-hidden">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="flex flex-col sm:flex-row gap-8">
+            {/* Sidebar */}
+            <div className="w-full sm:w-64 flex flex-col items-center sm:items-start border rounded-xl p-5 shadow-sm bg-white">
+              {profileInfo.avatarUrl ? (
+                <img
+                  src={profileInfo.avatarUrl}
+                  className="w-20 h-20 rounded-full object-cover mb-3 ring-2 ring-amber-400"
+                  alt="avatar"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-2xl font-semibold mb-3 ring-2 ring-amber-400">
+                  {initials(profileInfo.name || user?.name)}
+                </div>
+              )}
+              <div className="text-center sm:text-left">
+                <p className="font-semibold text-lg break-words">
+                  {profileInfo.name || user?.email}
+                </p>
+                <p className="text-sm text-gray-500 break-words">{user?.email}</p>
               </div>
-            )}
-            <div className="text-center sm:text-left">
-              <p className="font-semibold text-lg">
-                {profileInfo.name || user?.email}
-              </p>
-              <p className="text-sm text-gray-500">{user?.email}</p>
-            </div>
-            <button
-              onClick={logout}
-              className="mt-4 w-full px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 font-medium"
-            >
-              Logout
-            </button>
-
-            {/* Tabs */}
-            <div className="mt-6 w-full space-y-1">
-              {[
-                ["orders", "My Orders"],
-                ["cancelled", "Cancelled Orders"],
-                ["addresses", "Addresses"],
-                ["payments", "Payment Methods"],
-                ["coupons", "Coupons"],
-                ["notifications", "Notifications"],
-              ].map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setActiveTab(key)}
-                  className={`block w-full text-left px-3 py-2 rounded-md text-sm transition ${
-                    activeTab === key
-                      ? "bg-amber-500 text-gray-900 font-medium"
-                      : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                variants={tabVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
+              <button
+                onClick={logout}
+                className="mt-4 w-full px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 font-medium"
               >
-                {/* My Orders */}
-                {activeTab === "orders" && (
-                  <>
-                    <h2 className="text-xl font-semibold mb-4">My Orders</h2>
-                    {activeOrders.length ? (
-                      <div className="space-y-4">
-                        {activeOrders.map((o, i) => (
-                          <OrderCard key={o.id} o={o} index={i} />
-                        ))}
-                      </div>
-                    ) : (
-                      <Empty
-                        img="/empty-orders.svg"
-                        title="No active orders."
-                        hint="Your orders will appear here once placed."
-                        ctaHref="/shop"
-                        ctaLabel="Start Shopping"
-                      />
-                    )}
-                  </>
-                )}
+                Logout
+              </button>
 
-                {/* Cancelled Orders */}
-                {activeTab === "cancelled" && (
-                  <>
-                    <h2 className="text-xl font-semibold mb-4 text-red-600">
-                      Cancelled Orders
-                    </h2>
-                    {cancelledOrders.length ? (
-                      <div className="space-y-4">
-                        {cancelledOrders.map((o, i) => (
-                          <OrderCard key={o.id} o={o} cancelled index={i} />
-                        ))}
-                      </div>
-                    ) : (
-                      <Empty
-                        img="/empty-cancelled.svg"
-                        title="No cancelled orders."
-                        hint="Cancelled orders will appear here."
-                      />
-                    )}
-                  </>
-                )}
+              {/* Tabs */}
+              <div className="mt-6 w-full space-y-1">
+                {[
+                  ["orders", "My Orders"],
+                  ["cancelled", "Cancelled Orders"],
+                  ["addresses", "Addresses"],
+                  ["payments", "Payment Methods"],
+                  ["coupons", "Coupons"],
+                  ["notifications", "Notifications"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key)}
+                    className={`block w-full text-left px-3 py-2 rounded-md text-sm transition ${
+                      activeTab === key
+                        ? "bg-amber-500 text-gray-900 font-medium"
+                        : "hover:bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                {/* Addresses */}
-                {activeTab === "addresses" && (
-                  <>
-                    <h2 className="text-xl font-semibold mb-4">My Addresses</h2>
-                    {addresses.length ? (
-                      <div className="divide-y">
-                        {addresses.map((a) => (
-                          <div
-                            key={a.id}
-                            className="py-3 flex justify-between items-center text-sm"
-                          >
-                            <div>
-                              <p className="font-medium">
-                                {a.name} — {a.city}, {a.state}
-                              </p>
-                              <p className="text-gray-600">{a.address}</p>
-                              <p className="text-gray-500 text-xs">
-                                {a.pincode} | {a.phone}
-                              </p>
-                              {a.isDefault && (
-                                <span className="text-green-600 text-xs font-medium mt-1 inline-block">
-                                  Default
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              onClick={() =>
-                                deleteDoc(
-                                  doc(db, "users", user.email, "addresses", a.id)
-                                )
-                              }
-                              className="text-xs text-red-600 hover:text-red-800"
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  variants={tabVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  {/* My Orders */}
+                  {activeTab === "orders" && (
+                    <>
+                      <h2 className="text-xl font-semibold mb-4">My Orders</h2>
+                      {activeOrders.length ? (
+                        <div className="space-y-4">
+                          {activeOrders.map((o, i) => (
+                            <OrderCard key={o.id} o={o} index={i} />
+                          ))}
+                        </div>
+                      ) : (
+                        <Empty
+                          img="/empty-orders.svg"
+                          title="No active orders."
+                          hint="Your orders will appear here once placed."
+                          ctaHref="/shop"
+                          ctaLabel="Start Shopping"
+                        />
+                      )}
+                    </>
+                  )}
+
+                  {/* Cancelled Orders */}
+                  {activeTab === "cancelled" && (
+                    <>
+                      <h2 className="text-xl font-semibold mb-4 text-red-600">
+                        Cancelled Orders
+                      </h2>
+                      {cancelledOrders.length ? (
+                        <div className="space-y-4">
+                          {cancelledOrders.map((o, i) => (
+                            <OrderCard key={o.id} o={o} cancelled index={i} />
+                          ))}
+                        </div>
+                      ) : (
+                        <Empty
+                          img="/empty-cancelled.svg"
+                          title="No cancelled orders."
+                          hint="Cancelled orders will appear here."
+                        />
+                      )}
+                    </>
+                  )}
+
+                  {/* Addresses */}
+                  {activeTab === "addresses" && (
+                    <>
+                      <h2 className="text-xl font-semibold mb-4">My Addresses</h2>
+                      {addresses.length ? (
+                        <div className="divide-y">
+                          {addresses.map((a) => (
+                            <div
+                              key={a.id}
+                              className="py-3 flex justify-between items-center text-sm"
                             >
-                              Remove
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <Empty
-                        img="/empty-address.svg"
-                        title="No saved addresses."
-                        hint="Save your address to speed up checkout."
-                      />
-                    )}
-                  </>
-                )}
-
-                {/* Payments */}
-                {activeTab === "payments" && (
-                  <Empty
-                    img="/empty-payments.svg"
-                    title="No saved payment labels."
-                    hint="Payments are securely handled by Razorpay / UPI."
-                  />
-                )}
-
-                {/* Coupons */}
-                {activeTab === "coupons" && (
-                  <>
-                    <h2 className="text-xl font-semibold mb-4">Coupons</h2>
-                    {coupons.length ? (
-                      <div className="grid gap-3">
-                        {coupons.map((c) => (
-                          <motion.div
-                            key={c.id}
-                            variants={cardVariants(0)}
-                            initial="hidden"
-                            animate="visible"
-                            className="border rounded-lg p-4 flex justify-between items-center hover:shadow-sm transition"
-                          >
-                            <div>
-                              <p className="font-semibold text-gray-900">
-                                {c.code}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {c.description}
-                              </p>
+                              <div className="min-w-0">
+                                <p className="font-medium break-words">
+                                  {a.name} — {a.city}, {a.state}
+                                </p>
+                                <p className="text-gray-600 break-words">{a.address}</p>
+                                <p className="text-gray-500 text-xs">
+                                  {a.pincode} | {a.phone}
+                                </p>
+                                {a.isDefault && (
+                                  <span className="text-green-600 text-xs font-medium mt-1 inline-block">
+                                    Default
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() =>
+                                  deleteDoc(
+                                    doc(db, "users", user.email, "addresses", a.id)
+                                  )
+                                }
+                                className="text-xs text-red-600 hover:text-red-800"
+                              >
+                                Remove
+                              </button>
                             </div>
-                            <span className="text-sm font-semibold text-green-600">
-                              {c.discount}% OFF
-                            </span>
-                          </motion.div>
-                        ))}
-                      </div>
-                    ) : (
-                      <Empty
-                        img="/empty-coupons.svg"
-                        title="No coupons found."
-                      />
-                    )}
-                  </>
-                )}
+                          ))}
+                        </div>
+                      ) : (
+                        <Empty
+                          img="/empty-address.svg"
+                          title="No saved addresses."
+                          hint="Save your address to speed up checkout."
+                        />
+                      )}
+                    </>
+                  )}
 
-                {/* Notifications */}
-                {activeTab === "notifications" && (
-                  <>
-                    <h2 className="text-xl font-semibold mb-4">
-                      Notifications
-                    </h2>
-                    {notifications.length ? (
-                      <div className="space-y-3">
-                        {notifications.map((n, i) => (
-                          <motion.div
-                            key={n.id}
-                            variants={cardVariants(i)}
-                            initial="hidden"
-                            animate="visible"
-                            className="border rounded-lg p-3 hover:bg-gray-50 transition"
-                          >
-                            <p className="font-medium">{n.title}</p>
-                            <p className="text-xs text-gray-500">{n.message}</p>
-                          </motion.div>
-                        ))}
-                      </div>
-                    ) : (
-                      <Empty
-                        img="/empty-notifications.svg"
-                        title="No notifications."
-                      />
-                    )}
-                  </>
-                )}
-              </motion.div>
-            </AnimatePresence>
+                  {/* Payments */}
+                  {activeTab === "payments" && (
+                    <Empty
+                      img="/empty-payments.svg"
+                      title="No saved payment labels."
+                      hint="Payments are securely handled by Razorpay / UPI."
+                    />
+                  )}
+
+                  {/* Coupons */}
+                  {activeTab === "coupons" && (
+                    <>
+                      <h2 className="text-xl font-semibold mb-4">Coupons</h2>
+                      {coupons.length ? (
+                        <div className="grid gap-3">
+                          {coupons.map((c) => (
+                            <motion.div
+                              key={c.id}
+                              variants={cardVariants(0)}
+                              initial="hidden"
+                              animate="visible"
+                              className="border rounded-lg p-4 flex justify-between items-center hover:shadow-sm transition"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-semibold text-gray-900 break-words">
+                                  {c.code}
+                                </p>
+                                <p className="text-xs text-gray-500 break-words">
+                                  {c.description}
+                                </p>
+                              </div>
+                              <span className="text-sm font-semibold text-green-600">
+                                {c.discount}% OFF
+                              </span>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <Empty img="/empty-coupons.svg" title="No coupons found." />
+                      )}
+                    </>
+                  )}
+
+                  {/* Notifications */}
+                  {activeTab === "notifications" && (
+                    <>
+                      <h2 className="text-xl font-semibold mb-4">Notifications</h2>
+                      {notifications.length ? (
+                        <div className="space-y-3">
+                          {notifications.map((n, i) => (
+                            <motion.div
+                              key={n.id}
+                              variants={cardVariants(i)}
+                              initial="hidden"
+                              animate="visible"
+                              className="border rounded-lg p-3 hover:bg-gray-50 transition"
+                            >
+                              <p className="font-medium break-words">{n.title}</p>
+                              <p className="text-xs text-gray-500 break-words">
+                                {n.message}
+                              </p>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <Empty img="/empty-notifications.svg" title="No notifications." />
+                      )}
+                    </>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* 🔁 Replacement Modal */}
-      <AnimatePresence>
-        {replaceModal.open && (
-          <motion.div
-            className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+        {/* 🔁 Replacement Modal */}
+        <AnimatePresence>
+          {replaceModal.open && (
             <motion.div
-              className="bg-white rounded-2xl max-w-md w-full p-6"
-              initial={{ scale: 0.96, opacity: 0, y: 14 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.98, opacity: 0, y: 8 }}
-              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
             >
-              <h3 className="text-lg font-semibold mb-1">Request Replacement</h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Item:{" "}
-                <span className="font-medium">{replaceModal.itemName}</span>
-              </p>
-
-              <label className="block text-sm font-medium mb-1">Reason</label>
-              <select
-                className="w-full border rounded-md px-3 py-2 mb-4"
-                value={replaceModal.reason}
-                onChange={(e) =>
-                  setReplaceModal((m) => ({ ...m, reason: e.target.value }))
-                }
+              <motion.div
+                className="bg-white rounded-2xl max-w-md w-full p-6"
+                initial={{ scale: 0.96, opacity: 0, y: 14 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.98, opacity: 0, y: 8 }}
+                transition={{ duration: 0.2 }}
               >
-                {REPLACEMENT_REASONS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
+                <h3 className="text-lg font-semibold mb-1">Request Replacement</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Item: <span className="font-medium">{replaceModal.itemName}</span>
+                </p>
 
-              <label className="block text-sm font-medium mb-1">
-                Notes (optional)
-              </label>
-              <textarea
-                rows={3}
-                className="w-full border rounded-md px-3 py-2"
-                placeholder="Describe the issue..."
-                value={replaceModal.note}
-                onChange={(e) =>
-                  setReplaceModal((m) => ({ ...m, note: e.target.value }))
-                }
-              />
-
-              <div className="mt-5 flex gap-2 justify-end">
-                <button
-                  onClick={() =>
-                    setReplaceModal((m) => ({ ...m, open: false }))
+                <label className="block text-sm font-medium mb-1">Reason</label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 mb-4"
+                  value={replaceModal.reason}
+                  onChange={(e) =>
+                    setReplaceModal((m) => ({ ...m, reason: e.target.value }))
                   }
-                  className="px-4 py-2 rounded-md border text-sm hover:bg-gray-50"
-                  disabled={replaceModal.submitting}
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitReplacement}
-                  disabled={replaceModal.submitting}
-                  className="px-4 py-2 rounded-md bg-black text-white text-sm hover:bg-gray-800"
-                >
-                  {replaceModal.submitting ? "Submitting..." : "Submit Request"}
-                </button>
-              </div>
+                  {REPLACEMENT_REASONS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
 
-              <p className="mt-4 text-xs text-gray-500">
-                Replacement window: within 7 days of delivery. Items must be
-                unused and in original packaging.
-              </p>
+                <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+                <textarea
+                  rows={3}
+                  className="w-full border rounded-md px-3 py-2"
+                  placeholder="Describe the issue..."
+                  value={replaceModal.note}
+                  onChange={(e) =>
+                    setReplaceModal((m) => ({ ...m, note: e.target.value }))
+                  }
+                />
+
+                <div className="mt-5 flex gap-2 justify-end">
+                  <button
+                    onClick={() => setReplaceModal((m) => ({ ...m, open: false }))}
+                    className="px-4 py-2 rounded-md border text-sm hover:bg-gray-50"
+                    disabled={replaceModal.submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitReplacement}
+                    disabled={replaceModal.submitting}
+                    className="px-4 py-2 rounded-md bg-black text-white text-sm hover:bg-gray-800"
+                  >
+                    {replaceModal.submitting ? "Submitting..." : "Submit Request"}
+                  </button>
+                </div>
+
+                <p className="mt-4 text-xs text-gray-500">
+                  Replacement window: within 7 days of delivery. Items must be unused and in
+                  original packaging.
+                </p>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </main>
     </>
   );
 }

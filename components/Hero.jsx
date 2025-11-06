@@ -51,26 +51,21 @@ function HeroComponent() {
 
   return (
     <section
-      className="relative w-full
-      h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-[85vh] xl:h-[90vh]" // More responsive heights
+      className="relative w-full max-w-full overflow-hidden
+        h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-[85vh] xl:h-[90vh]"
       aria-label="Featured jewellery collections"
     >
       <Swiper
         modules={[Autoplay, Pagination, Navigation]}
-        autoplay={{
-          delay: 4500,
-          disableOnInteraction: false,
-          pauseOnMouseEnter: true,
-        }}
+        autoplay={{ delay: 4500, disableOnInteraction: false, pauseOnMouseEnter: true }}
         pagination={{ clickable: true }}
         navigation
         loop={data.length > 1}
         className="w-full h-full"
       >
         {data.map((slide, i) => (
-          <SwiperSlide key={slide.id || i}>
+          <SwiperSlide key={slide.id || i} className="w-full max-w-full overflow-hidden">
             <div className="relative w-full h-full">
-              {/* ✅ Higher quality, no dullness, no over-dark */}
               <Image
                 src={
                   slide.img && slide.img.startsWith("http")
@@ -88,20 +83,24 @@ function HeroComponent() {
                   transition-transform duration-[2500ms]
                   md:scale-105 hover:scale-110
                   max-sm:scale-100
+                  will-change-transform
+                  max-w-full
                 "
               />
 
-              {/* ✅ Softer gradient overlay (no faded, washed look) */}
+              {/* Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/20 to-transparent pointer-events-none" />
 
-              {/* ✅ Text Content */}
-              <div className="
-                absolute inset-x-4 sm:inset-x-8
-                bottom-10 sm:bottom-16 md:bottom-24
-                text-white max-w-[90%] sm:max-w-xl md:max-w-2xl
-                drop-shadow-lg
-              ">
-                <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-tight text-white">
+              {/* Text + CTA */}
+              <div
+                className="
+                  absolute left-1/2 -translate-x-1/2
+                  bottom-10 sm:bottom-16 md:bottom-24
+                  text-white w-[90%] sm:w-auto max-w-2xl
+                  px-2 sm:px-0 text-center sm:text-left
+                "
+              >
+                <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-tight">
                   {slide.title}
                 </h1>
                 {slide.desc && (
@@ -110,8 +109,7 @@ function HeroComponent() {
                   </p>
                 )}
 
-                {/* ✅ CTA Buttons */}
-                <div className="mt-6 flex flex-wrap gap-3">
+                <div className="mt-6 flex flex-wrap gap-3 justify-center sm:justify-start">
                   <Link
                     href={slide.ctaPrimary.href}
                     className="inline-flex items-center justify-center px-6 py-3 rounded-xl
@@ -120,7 +118,6 @@ function HeroComponent() {
                   >
                     {slide.ctaPrimary.label} →
                   </Link>
-
                   <Link
                     href={slide.ctaSecondary.href}
                     className="inline-flex items-center justify-center px-6 py-3 rounded-xl

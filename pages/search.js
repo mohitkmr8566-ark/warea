@@ -250,7 +250,7 @@ function SSRSearch({ initialProducts, initialQuery, baseUrlFromServer }) {
 }
 
 /* ==========================
-   Shared UILayout (unchanged visually)
+   Shared UILayout
 ========================== */
 function SearchLayout({
   queryText,
@@ -281,7 +281,8 @@ function SearchLayout({
         )}
       </Head>
 
-      <main className="w-full min-h-screen">
+      {/* prevent right-side cut while preserving your .page-container layout */}
+      <main className="w-full max-w-full overflow-x-hidden min-h-screen">
         <div className="w-full bg-white border-b border-gray-200 shadow-sm">
           <div className="page-container py-10 text-center">
             <div className="flex justify-center mb-4">

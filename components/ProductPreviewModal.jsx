@@ -11,7 +11,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
   const { inWishlist, toggleItem } = useWishlist() || {};
   if (!product) return null;
 
-  // Normalize images with safe fallback
+  // Normalize images
   const images = useMemo(() => {
     if (Array.isArray(product.images) && product.images.length) return product.images;
     const fallback =
@@ -32,7 +32,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
       : toast.success(`${product.title} added to Wishlist ❤️`);
   };
 
-  // ESC key closes modal
+  // Close on Esc key
   useEffect(() => {
     const esc = (e) => e.key === "Escape" && onClose?.();
     document.addEventListener("keydown", esc);
@@ -41,22 +41,24 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
 
   return (
     <AnimatePresence>
+      {/* Overlay */}
       <motion.div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[999]"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[999] overflow-x-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
       >
+        {/* Modal Box */}
         <motion.div
-          className="relative bg-white rounded-2xl shadow-2xl w-[92%] max-w-3xl max-h-[90vh] overflow-hidden"
+          className="relative bg-white rounded-2xl shadow-2xl w-[92%] sm:w-[90%] max-w-3xl max-w-full overflow-hidden"
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ duration: 0.2 }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Close button */}
+          {/* Close Button */}
           <button
             type="button"
             onClick={onClose}
@@ -66,13 +68,13 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
             <X size={20} />
           </button>
 
-          {/* Image */}
-          <div className="relative w-full h-[300px] sm:h-[420px] bg-gray-50">
+          {/* Image Carousel */}
+          <div className="relative w-full h-[300px] sm:h-[420px] bg-gray-50 overflow-hidden">
             <img
               key={idx}
               src={images[idx]}
               alt={`${product.title} Image ${idx + 1}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover max-w-full"
               onError={(e) => (e.currentTarget.src = "/products/placeholder.png")}
             />
 
@@ -99,7 +101,9 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
                   {images.map((_, i) => (
                     <span
                       key={i}
-                      className={`h-2 w-2 rounded-full ${i === idx ? "bg-white" : "bg-white/60"}`}
+                      className={`h-2 w-2 rounded-full ${
+                        i === idx ? "bg-white" : "bg-white/60"
+                      }`}
                     />
                   ))}
                 </div>
@@ -108,18 +112,20 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
           </div>
 
           {/* Details */}
-          <div className="p-5 sm:p-6 overflow-y-auto max-h-[50vh]">
+          <div className="p-5 sm:p-6 overflow-y-auto max-h-[50vh] w-full">
             <div className="flex items-start justify-between gap-3">
               <div className="w-full">
                 <h2 className="text-lg sm:text-2xl font-semibold text-gray-900 line-clamp-2">
                   {product.title}
                 </h2>
                 {product.category && (
-                  <p className="text-sm text-gray-500 mt-1 capitalize">{product.category}</p>
+                  <p className="text-sm text-gray-500 mt-1 capitalize">
+                    {product.category}
+                  </p>
                 )}
               </div>
 
-              {/* Wishlist */}
+              {/* Wishlist BTN */}
               <button
                 type="button"
                 aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
@@ -132,8 +138,10 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
               </button>
             </div>
 
+            {/* Price */}
             <div className="mt-3 text-2xl font-bold text-gray-800">₹{product.price}</div>
 
+            {/* Description */}
             {product.description && (
               <p className="text-gray-700 mt-3 text-sm sm:text-base leading-relaxed">
                 {product.description}
@@ -147,8 +155,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
                 onClick={onAddToCart}
                 className="flex items-center justify-center gap-2 bg-black text-white px-5 py-2.5 rounded-full hover:bg-gray-800 transition active:scale-95 w-full sm:w-auto"
               >
-                <ShoppingCart size={18} />
-                Add to Cart
+                <ShoppingCart size={18} /> Add to Cart
               </button>
 
               {detailPath && (
@@ -156,8 +163,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, det
                   href={detailPath}
                   className="flex items-center justify-center gap-2 border border-blue-600 text-blue-600 px-5 py-2.5 rounded-full hover:bg-blue-50 transition active:scale-95 w-full sm:w-auto"
                 >
-                  <Info size={18} />
-                  Full Details
+                  <Info size={18} /> Full Details
                 </Link>
               )}
             </div>

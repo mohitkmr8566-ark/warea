@@ -2,7 +2,7 @@
 
 export default function SearchBar({ value, onChange, placeholder = "Search products..." }) {
   return (
-    <div className="w-full">
+    <div className="w-full max-w-full overflow-x-hidden">
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
