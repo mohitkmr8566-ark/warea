@@ -16,9 +16,10 @@
   }
 
   body {
-    /* Adds breathing space on mobile bottom CTAs (safe-area) */
+    /* Safe-area for bottom CTAs & soft background gradient */
     padding-bottom: env(safe-area-inset-bottom);
     background-image: linear-gradient(to bottom, #fffdf9 0%, #fffaf0 100%);
+    overscroll-behavior-y: none; /* prevent rubber-banding behind modals */
   }
 
   h1, h2, h3, h4 {
@@ -29,7 +30,7 @@
     @apply transition duration-200 ease-in-out;
   }
 
-  /* Smooth gold text gradient effect */
+  /* Smooth gold gradient text */
   .text-gold {
     background: linear-gradient(90deg, #d4af37 0%, #f8e5b4 100%);
     -webkit-background-clip: text;
@@ -52,35 +53,25 @@
 }
 
 .hero-overlay {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.95) 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.95) 100%);
   backdrop-filter: blur(6px);
 }
 
 /* =========================================================
-   GOLD COLOR SYSTEM (Utility Classes)
+   GOLD COLOR SYSTEM
    ========================================================= */
-.gold-light {
-  color: #f8e5b4;
-}
-.gold {
-  color: #d4af37;
-}
-.gold-dark {
-  color: #b8860b;
-}
+.gold-light { color: #f8e5b4; }
+.gold { color: #d4af37; }
+.gold-dark { color: #b8860b; }
 
-.bg-gold {
-  background-color: #d4af37;
-}
-.bg-gold-light {
-  background-color: #f8e5b4;
-}
+.bg-gold { background-color: #d4af37; }
+.bg-gold-light { background-color: #f8e5b4; }
 .bg-gold-gradient {
   background: linear-gradient(135deg, #f8e5b4 0%, #d4af37 100%);
 }
 
 /* =========================================================
-   BUTTONS & HOVER INTERACTIONS
+   BUTTONS & INTERACTIONS
    ========================================================= */
 .btn-primary {
   @apply bg-amber-500 text-gray-900 px-6 py-3 rounded-lg font-medium hover:bg-amber-400 transition;
@@ -90,7 +81,6 @@
   @apply border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-100;
 }
 
-/* Add gentle lift hover effect */
 .hover-lift {
   transition: all 0.25s ease;
 }
@@ -112,40 +102,23 @@
 /* =========================================================
    ANIMATIONS
    ========================================================= */
-.cart-bump {
-  animation: bump 360ms ease-out;
-}
+.cart-bump { animation: bump 360ms ease-out; }
+
 @keyframes bump {
-  0% {
-    transform: scale(1);
-  }
-  30% {
-    transform: scale(1.12);
-  }
-  60% {
-    transform: scale(0.98);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(1); }
+  30% { transform: scale(1.12); }
+  60% { transform: scale(0.98); }
+  100% { transform: scale(1); }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
-.animate-fadeIn {
-  animation: fadeIn 0.25s ease-out;
-}
+.animate-fadeIn { animation: fadeIn 0.25s ease-out; }
 
 /* =========================================================
-   UTILITY TWEAKS
+   GLOBAL UTILITIES
    ========================================================= */
 img {
   display: block;
@@ -156,61 +129,58 @@ section {
   @apply py-12 md:py-20;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+/* Hide scrollbars for scrollable containers */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* =========================================================
-   LAYOUT GUARD — Horizontal overflow killer
-   (Prevents the whole page from shifting/cropping on small screens)
-   ========================================================= */
+/* Prevent horizontal overflow globally */
 html, body, #__next {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden !important;
 }
 
-/* Predictable sizing everywhere */
+/* Predictable sizing */
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
-/* Media should never push layout wider than viewport */
+/* Media should never overflow */
 img, video, canvas, svg {
   max-width: 100%;
   height: auto;
 }
 
 /* =========================================================
-   RESPONSIVE FIXES (Improved — Final Mobile Cleanup)
+   SPECIAL UTILITIES
+   ========================================================= */
+/* Lock background scroll when modals are open */
+.no-scroll {
+  overflow: hidden !important;
+  height: 100vh;
+  touch-action: none;
+}
+
+/* =========================================================
+   RESPONSIVE FIXES — FINAL MOBILE CLEANUP
    ========================================================= */
 @media (max-width: 640px) {
   h1 { @apply text-2xl; }
   h2 { @apply text-xl; }
 
-  /* Reduce side padding to prevent card overflow */
-  .page-container {
-    @apply px-3;
-  }
+  .page-container { @apply px-3; }
+  section { @apply py-8; }
 
-  /* Reduce vertical spacing for sections (hero, categories, product grid) */
-  section {
-    @apply py-8;
-  }
+  /* Tighten modal spacing for small screens */
+  .modal-content { max-height: 90vh; overflow-y: auto; }
 }
 
-/* Extra-safe for very small phones like iPhone SE (375px) */
+/* For extra small devices like iPhone SE */
 @media (max-width: 400px) {
-  .page-container {
-    @apply px-2; /* tighter padding */
-  }
+  .page-container { @apply px-2; }
 }
 
-/* Ensure main content doesn’t hide behind sticky bottom CTA on mobile */
+/* Ensure main content visible above sticky bottom elements */
 main {
   padding-bottom: env(safe-area-inset-bottom, 60px);
 }

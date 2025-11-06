@@ -9,9 +9,7 @@ import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
-const ProductGrid = dynamic(() => import("@/components/ProductGrid"), {
-  ssr: false,
-});
+const ProductGrid = dynamic(() => import("@/components/ProductGrid"), { ssr: false });
 
 // Normalize helper
 const normalize = (str = "") => str.toString().trim().toLowerCase();
@@ -39,9 +37,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
       const newQuery = { ...router.query };
       if (!value || value === "all") delete newQuery[key];
       else newQuery[key] = value;
-      router.push({ pathname: "/shop", query: newQuery }, undefined, {
-        shallow: true,
-      });
+      router.push({ pathname: "/shop", query: newQuery }, undefined, { shallow: true });
     },
     [router]
   );
@@ -62,9 +58,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
     (typeof window !== "undefined" ? window.location.origin : "");
 
   const pageTitle =
-    selectedCategory !== "all"
-      ? `${heading} | Warea Jewellery`
-      : "Shop Jewellery Online | Warea";
+    selectedCategory !== "all" ? `${heading} | Warea Jewellery` : "Shop Jewellery Online | Warea";
 
   const pageDesc = `Discover exquisite ${
     selectedCategory === "all" ? "" : selectedCategory
@@ -72,7 +66,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
 
   // ✅ JSON-LD structured data
   const itemListJson = useMemo(() => {
-    const sample = initialProducts.slice(0, 5) || [];
+    const sample = Array.isArray(initialProducts) ? initialProducts.slice(0, 5) : [];
     return JSON.stringify({
       "@context": "https://schema.org",
       "@type": "ItemList",
@@ -87,6 +81,9 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
     });
   }, [initialProducts, heading, baseUrl]);
 
+  // ✅ simple local empty state (only used when SSR returns no products)
+  const isEmptyOnServer = !initialProducts || initialProducts.length === 0;
+
   return (
     <>
       <Head>
@@ -94,9 +91,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         <meta name="description" content={pageDesc} />
         <link
           rel="canonical"
-          href={`${baseUrl}/shop${
-            selectedCategory !== "all" ? `?cat=${selectedCategory}` : ""
-          }`}
+          href={`${baseUrl}/shop${selectedCategory !== "all" ? `?cat=${selectedCategory}` : ""}`}
         />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
@@ -106,7 +101,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
       </Head>
 
       {/* ✅ MAIN WRAPPER - hardened against horizontal overflow */}
-      <main className="w-full max-w-full overflow-x-hidden">
+      <main className="w-full max-w-full overflow-x-hidden overflow-y-visible">
         {/* ✅ Banner */}
         <section className="bg-gradient-to-b from-gray-50 to-white/90 border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
@@ -129,7 +124,11 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
           <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
             {/* edge-to-edge scroll on mobile while protected by outer container */}
             <div className="-mx-4 sm:mx-0">
-              <div className="flex gap-3 overflow-x-auto no-scrollbar whitespace-nowrap px-4 sm:px-0 pr-6 min-w-0 snap-x">
+              <div
+                role="tablist"
+                aria-label="Shop categories"
+                className="flex gap-3 overflow-x-auto no-scrollbar whitespace-nowrap px-4 pr-8 sm:px-0 min-w-0 snap-x snap-mandatory scroll-px-4"
+              >
                 {categories.map((cat) => {
                   const isActive = selectedCategory === cat;
                   return (
@@ -142,6 +141,7 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
                           ? "bg-black text-white border-black shadow"
                           : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
                       }`}
+                      aria-current={isActive ? "page" : undefined}
                     >
                       {cat.charAt(0).toUpperCase() + cat.slice(1)}
                     </Link>
@@ -153,8 +153,8 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         </div>
 
         {/* ✅ Sticky Filters – safe width & subtle UI polish */}
-        <div className="sticky top-[64px] bg-white/90 backdrop-blur-md border-b z-30 w-full">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
+        <div className="sticky top-[56px] sm:top-[64px] bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur-md border-b z-30 w-full">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
             <button
               onClick={() => setShowFilters((p) => !p)}
               className="lg:hidden flex items-center gap-2 border px-4 py-2 rounded-md text-sm bg-white hover:bg-gray-50"
@@ -197,20 +197,35 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
           </div>
         </div>
 
-        {/* ✅ Product Grid Wrapper – overflow safe */}
+        {/* ✅ Product Grid / Empty State Wrapper – overflow safe & mobile padding tuned */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 overflow-x-hidden"
+          className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-10 overflow-x-hidden"
         >
-          <ProductGrid
-            category={selectedCategory}
-            sort={sort}
-            minPrice={priceRange[0]}
-            maxPrice={priceRange[1]}
-            initialProducts={initialProducts}
-          />
+          {isEmptyOnServer ? (
+            <div className="min-h-[40vh] grid place-items-center text-center">
+              <div>
+                <div className="mx-auto mb-3 h-10 w-10 rounded-full bg-gray-100 grid place-items-center">
+                  {/* small placeholder icon circle */}
+                  <span className="text-gray-400 text-xl">🛍️</span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">No products found</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Try adjusting your filters or check back soon.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <ProductGrid
+              category={selectedCategory}
+              sort={sort}
+              minPrice={priceRange[0]}
+              maxPrice={priceRange[1]}
+              initialProducts={initialProducts}
+            />
+          )}
         </motion.div>
       </main>
     </>
