@@ -13,14 +13,26 @@ import {
   getSiteNavSchema,
 } from "@/lib/seoSchemas";
 
+// ✅ ADD THIS ENTIRE BLOCK at the top with your other imports
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  where,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 // ✅ Client-side only Hero (Swiper heavy, avoids hydration issues)
 const Hero = dynamic(() => import("@/components/Hero"), { ssr: false });
 
-export default function HomePage() {
+// ✅ STEP 1: Add { initialProducts } here
+export default function HomePage({ initialProducts = [] }) {
   const baseUrl = getBaseUrl();
 
-  // ✅ Static featured product data (used only for schema and rendering)
-  const featuredProducts = [
+  // ✅ This 'featuredProducts' array is now only used for SEO schema
+  const featuredProductsForSchema = [
     {
       name: "Gold Plated Heart Earrings",
       image: `${baseUrl}/products/heart-earrings.jpg`,
@@ -54,7 +66,8 @@ export default function HomePage() {
       getWebsiteSchema(baseUrl),
       getBreadcrumbSchema(baseUrl),
       getSiteNavSchema(baseUrl),
-      ...getProductSchemas(baseUrl, featuredProducts),
+      // ✅ We use the static schema list, not the live products
+      ...getProductSchemas(baseUrl, featuredProductsForSchema),
     ],
     [baseUrl]
   );
@@ -112,10 +125,50 @@ export default function HomePage() {
                 Featured Products
               </h2>
             </motion.div>
-            <ProductGrid onlyFeatured />
+            <ProductGrid onlyFeatured initialProducts={initialProducts} />
           </div>
         </section>
       </div>
     </>
   );
+}
+
+// ✅ STEP 3: ADD THIS ENTIRE FUNCTION to the bottom of the file
+export async function getServerSideProps() {
+  try {
+    // Create a query to get only "isFeatured: true" products
+    const q = query(
+      collection(db, "products"),
+      where("isFeatured", "==", true),
+      orderBy("createdAt", "desc"),
+      limit(8) // Get up to 8 featured products
+    );
+
+    const snapshot = await getDocs(q);
+
+    // Format the products for the page
+    const featuredProducts = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Convert Firestore Timestamps to plain numbers
+        createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : null,
+        updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : null,
+      };
+    });
+
+    // Pass the products as props to the HomePage component
+    return {
+      props: {
+        initialProducts: featuredProducts,
+      },
+    };
+  } catch (err) {
+    console.error("❌ SSR Error (homepage):", err);
+    // Always return props, even if empty, to avoid errors
+    return {
+      props: { initialProducts: [] },
+    };
+  }
 }

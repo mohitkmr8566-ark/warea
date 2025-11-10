@@ -87,7 +87,7 @@ export default function ShopPage({ initialProducts = [], baseUrlFromServer = "" 
       </Head>
 
       {/* ✅ Main Wrapper */}
-      <main className="w-full min-w-0 bg-[#fdfaf5]">
+      <div className="w-full min-w-0 bg-[#fdfaf5]">
 
         {/* ✅ HERO */}
         <section className="border-b w-full">
@@ -109,29 +109,28 @@ export default function ShopPage({ initialProducts = [], baseUrlFromServer = "" 
         {/* ✅ CATEGORY TABS */}
         <div className="border-b bg-[#fdfaf5] w-full">
           <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-4">
-            <div className="-mx-4 sm:mx-0">
-              <div className="flex overflow-x-auto no-scrollbar gap-3 whitespace-nowrap px-4 pr-8">
-                {categories.map((cat) => {
-                  const isActive = selectedCategory === cat;
-                  return (
-                    <Link
-                      key={cat}
-                      href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
-                      shallow
-                      className={`px-5 py-2.5 rounded-full text-sm border font-medium flex-shrink-0 ${
-                        isActive
-                          ? "bg-black text-white border-black shadow"
-                          : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
-                      }`}
-                    >
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </Link>
+            <div className="sm:mx-0 flex overflow-x-auto no-scrollbar gap-3 whitespace-nowrap px-4 sm:px-0 pr-4 sm:pr-0">
+              {categories.map((cat) => {
+                const isActive = selectedCategory === cat;
+                return (
+                  <Link
+                    key={cat}
+                    href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
+                    shallow
+                    className={`px-5 py-2.5 rounded-full text-sm border font-medium flex-shrink-0 ${
+                      isActive
+                        ? "bg-black text-white border-black shadow"
+                        : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
+                  }`}
+                  >
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </Link>
                   );
-                })}
-              </div>
+              })}
             </div>
           </div>
         </div>
+
 
         {/* ✅ FILTER SECTION (Sticky) */}
         <div className="sticky top-[56px] sm:top-[64px] bg-white/90 backdrop-blur border-b z-30 w-full">
@@ -158,18 +157,18 @@ export default function ShopPage({ initialProducts = [], baseUrlFromServer = "" 
                 >
                   <option value="0-10000">All Prices</option>
                   <option value="0-500">Under ₹500</option>
-                  <option value="500-1000">₹500–₹1000</option>
-                  <option value="1000-2000">₹1000–₹2000</option>
-                  <option value="2000-5000">₹2000–₹5000</option>
+                  <option value="500-1000">₹500-₹1000</option>
+                  <option value="1000-2000">₹1000-₹2000</option>
+                  <option value="2000-5000">₹2000-₹5000</option>
                 </select>
               </div>
             )}
 
-            <div className="ml-auto">
+            <div className="w-full mt-2 sm:w-auto sm:mt-0 sm:ml-auto">
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="border px-3 py-2 text-sm rounded-md bg-white"
+                className="w-full border px-3 py-2 text-sm rounded-md bg-white"
               >
                 <option value="">Sort By</option>
                 <option value="popular">Most Popular</option>
@@ -186,7 +185,7 @@ export default function ShopPage({ initialProducts = [], baseUrlFromServer = "" 
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-8"
+          className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
         >
           {initialProducts.length === 0 ? (
             <div className="min-h-[40vh] grid place-items-center">
@@ -202,7 +201,7 @@ export default function ShopPage({ initialProducts = [], baseUrlFromServer = "" 
             />
           )}
         </motion.div>
-      </main>
+      </div>
     </>
   );
 }

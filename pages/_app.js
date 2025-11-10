@@ -18,7 +18,9 @@ import SEO from "../next-seo.config";
 
 export default function MyApp({ Component, pageProps, router }) {
   // ✅ No conditional DOM classes (prevents hydration mismatches)
-  const isHomePage = router?.pathname === "/";
+
+  // ✅ AFTER (The fix)
+  const isFullWidthPage = router?.pathname === "/" || router?.pathname.startsWith("/shop");
 
   // ✅ Safe base URL detection (SSR + CSR)
   const baseUrl =
@@ -82,7 +84,7 @@ export default function MyApp({ Component, pageProps, router }) {
             <Toaster position="top-right" />
             <div className="min-h-screen flex flex-col">
               <Header />
-              <main className={isHomePage ? "flex-1 w-full" : "flex-1 page-container"}>
+              <main className={isFullWidthPage ? "flex-1 w-full" : "flex-1 page-container"}>
                 <Component {...pageProps} />
               </main>
               <Footer />

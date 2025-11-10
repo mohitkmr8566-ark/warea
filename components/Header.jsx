@@ -148,7 +148,7 @@ function Header() {
       </div>
 
       {/* ✅ Mobile Navigation Dropdown */}
-      {open && (
+      {open && mounted && (
         <div className="md:hidden bg-white border-t p-4 flex flex-col gap-3 text-base font-medium">
           {["/", "/shop", "/about", "/contact", "/help", "/profile"].map((link) => (
             <Link key={link} href={link} onClick={toggleMenu} prefetch={false}>
