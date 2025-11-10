@@ -1,9 +1,12 @@
-// pages/404.js
+// ✅ FIXED pages/404.js
 import Head from "next/head";
 import Link from "next/link";
 
 export default function Custom404() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://warea.vercel.app";
+  // ✅ Use fallback only on client to avoid SSR mismatch
+  const baseUrl = typeof window !== "undefined"
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_BASE_URL || "";
 
   return (
     <>
@@ -13,15 +16,8 @@ export default function Custom404() {
           name="description"
           content="This page doesn’t exist. Go back to Warea and continue exploring timeless jewellery."
         />
-        <link rel="canonical" href={`${baseUrl}/404`} />
-
-        {/* OpenGraph for SEO */}
-        <meta property="og:title" content="Page Not Found | Warea Creations" />
-        <meta
-          property="og:description"
-          content="Oops! The page you’re looking for doesn’t exist. Return to the homepage."
-        />
-        <meta property="og:url" content={`${baseUrl}/404`} />
+        {/* ❌ Removed canonical for 404 (Google best practice) */}
+        <meta name="robots" content="noindex, nofollow" />
       </Head>
 
       <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 bg-white">
