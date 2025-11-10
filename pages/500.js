@@ -1,4 +1,4 @@
-// pages/500.js
+// ✅ FIXED pages/500.js
 import Head from "next/head";
 import Link from "next/link";
 
@@ -11,11 +11,7 @@ export default function Custom500() {
           name="description"
           content="We’re experiencing an issue. Please try again later."
         />
-        <meta property="og:title" content="Server Error | Warea Creations" />
-        <meta
-          property="og:description"
-          content="Something went wrong on our side. Please try again shortly."
-        />
+        <meta name="robots" content="noindex, nofollow" />
       </Head>
 
       <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 bg-white">

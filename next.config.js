@@ -1,71 +1,90 @@
-// ✅ Use ES module syntax
+// next.config.js (Converted to CommonJS syntax)
+
 import bundleAnalyzer from "@next/bundle-analyzer";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js"; // ✅ Required correct import
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
-  trailingSlash: true,
-  poweredByHeader: false,
-  compress: true,
+/**
+ * @type {import("next").NextConfig}
+ */
+const createConfig = (phase) => {
+  const isDev = phase === PHASE_DEVELOPMENT_SERVER;
 
-  // ✅ Updated Image Config (Next.js 15 & 16 safe)
-  images: {
-    // ❌ domains is deprecated, so DO NOT use it
-    // ✅ Remote patterns (Cloudinary, etc.)
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
-    ],
-    // ✅ Prevent Next.js from blocking query string images like ?f_auto,q_auto
-    // This ensures `/hero-banner.webp?f_auto,q_auto` doesn't break
-    unoptimized: true,
-    formats: ["image/avif", "image/webp"],
-  },
+  return withBundleAnalyzer({
+    reactStrictMode: true,
+    poweredByHeader: false,
+    compress: true,
+    trailingSlash: false,
 
-  eslint: { ignoreDuringBuilds: true },
+    // ✅ Image config - Now correct
+    images: {
+      remotePatterns: [
+        {
+          protocol: "https",
+          hostname: "res.cloudinary.com",
+        },
+      ],
+      // We REMOVED "unoptimized: true" so the optimizer works.
+      formats: ["image/avif", "image/webp"],
+    },
 
-  async headers() {
-    return [
-      // ✅ Cache Next.js static assets
-      {
-        source: "/_next/static/(.*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      // ✅ Cache for image/fonts/css/js assets
-      {
-        source:
-          "/(.*)\\.(js|css|png|jpg|jpeg|webp|avif|gif|svg|ico|ttf|woff|woff2|eot)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      // ✅ No cache for HTML content
-      {
-        source: "/((?!_next/).*)",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
-        ],
-      },
-    ];
-  },
+    eslint: {
+      ignoreDuringBuilds: true,
+    },
 
-  async rewrites() {
-    return [];
-  },
+    // ✅ Add caching only in production (not dev)
+    async headers() {
+      if (isDev) return [];
+      return [
+        {
+          source: "/_next/static/(.*)",
+          headers: [
+            {
+              key: "Cache-Control",
+              value: "public, max-age=31536000, immutable",
+            },
+          ],
+        },
+        {
+          source:
+            "/(.*)\\.(js|css|png|jpg|jpeg|webp|avif|gif|svg|ico|ttf|woff|woff2|eot)",
+          headers: [
+            {
+              key: "Cache-Control",
+              value: "public, max-age=31536000, immutable",
+            },
+          ],
+        },
+        {
+          source: "/((?!_next/).*)",
+          headers: [
+            {
+              key: "Cache-Control",
+              value: "public, max-age=0, must-revalidate",
+            },
+          ],
+        },
+      ];
+    },
+
+    async rewrites() {
+      return [];
+    },
+
+    // ✅ Prevents infinite reloads in dev (very important)
+    webpack(config, { dev }) {
+      if (dev) {
+        config.watchOptions = {
+          ...config.watchOptions,
+          ignored: ["**/public/**", "**/.next/**"],
+        };
+      }
+      return config;
+    },
+  });
 };
 
-export default withBundleAnalyzer(nextConfig);
+export default createConfig;

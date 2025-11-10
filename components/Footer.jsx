@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Facebook, Instagram, Twitter, Youtube } from "lucide-react";
 
+const currentYear = new Date().getFullYear(); // ✅ Prevent hydration mismatch by computing once
+
 export default function Footer() {
   return (
     <footer className="bg-gray-50 border-t mt-16 w-full max-w-full overflow-hidden">
@@ -20,11 +22,11 @@ export default function Footer() {
         <div className="min-w-0">
           <h4 className="font-semibold mb-3">Quick Links</h4>
           <ul className="space-y-2 text-sm">
-            <li><Link href="/">Home</Link></li>
-            <li><Link href="/shop">Shop</Link></li>
-            <li><Link href="/about">About Us</Link></li>
-            <li><Link href="/contact">Contact</Link></li>
-            <li><Link href="/help">Help</Link></li>
+            <li><Link href="/" prefetch={false}>Home</Link></li>
+            <li><Link href="/shop" prefetch={false}>Shop</Link></li>
+            <li><Link href="/about" prefetch={false}>About Us</Link></li>
+            <li><Link href="/contact" prefetch={false}>Contact</Link></li>
+            <li><Link href="/help" prefetch={false}>Help</Link></li>
           </ul>
         </div>
 
@@ -32,17 +34,20 @@ export default function Footer() {
         <div className="min-w-0">
           <h4 className="font-semibold mb-3">Policies</h4>
           <ul className="space-y-2 text-sm">
-            <li><Link href="#">Shipping Policy</Link></li>
-            <li><Link href="#">Return Policy</Link></li>
-            <li><Link href="#">Privacy Policy</Link></li>
-            <li><Link href="#">Terms & Conditions</Link></li>
+            <li><Link href="/shipping-policy" prefetch={false}>Shipping Policy</Link></li>
+            <li><Link href="/return-policy" prefetch={false}>Return Policy</Link></li>
+            <li><Link href="/privacy-policy" prefetch={false}>Privacy Policy</Link></li>
+            <li><Link href="/terms-and-conditions" prefetch={false}>Terms & Conditions</Link></li>
           </ul>
         </div>
 
         {/* Newsletter */}
         <div className="min-w-0">
           <h4 className="font-semibold mb-3">Join Our Newsletter</h4>
-          <form className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center w-full">
+          <form
+            className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center w-full"
+            onSubmit={(e) => e.preventDefault()} // ✅ Prevents unwanted refresh
+          >
             <input
               type="email"
               placeholder="Enter your email"
@@ -60,17 +65,17 @@ export default function Footer() {
 
           {/* Social Icons */}
           <div className="flex gap-4 mt-4 text-gray-600">
-            <Link href="#" aria-label="Facebook"><Facebook size={20} /></Link>
-            <Link href="#" aria-label="Instagram"><Instagram size={20} /></Link>
-            <Link href="#" aria-label="Twitter"><Twitter size={20} /></Link>
-            <Link href="#" aria-label="YouTube"><Youtube size={20} /></Link>
+            <Link href="#" aria-label="Facebook" prefetch={false}><Facebook size={20} /></Link>
+            <Link href="#" aria-label="Instagram" prefetch={false}><Instagram size={20} /></Link>
+            <Link href="#" aria-label="Twitter" prefetch={false}><Twitter size={20} /></Link>
+            <Link href="#" aria-label="YouTube" prefetch={false}><Youtube size={20} /></Link>
           </div>
         </div>
       </div>
 
       {/* Bottom Bar */}
       <div className="border-t text-center py-4 text-sm text-gray-500 w-full">
-        © {new Date().getFullYear()} Warea. All rights reserved.
+        © {currentYear} Warea. All rights reserved.
       </div>
     </footer>
   );

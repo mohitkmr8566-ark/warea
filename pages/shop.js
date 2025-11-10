@@ -1,8 +1,8 @@
-// ✅ pages/shop.js
+// pages/shop.js
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
@@ -14,10 +14,9 @@ const ProductGrid = dynamic(() => import("@/components/ProductGrid"), { ssr: fal
 // Normalize helper
 const normalize = (str = "") => str.toString().trim().toLowerCase();
 
-export default function ShopPage({ initialProducts, baseUrlFromServer }) {
+export default function ShopPage({ initialProducts = [], baseUrlFromServer = "" }) {
   const router = useRouter();
 
-  // Category from URL
   const selectedCategory = useMemo(() => {
     const cat = router.query.cat;
     return typeof cat === "string" ? normalize(cat) : "all";
@@ -32,41 +31,30 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
     []
   );
 
-  const updateQuery = useCallback(
-    (key, value) => {
-      const newQuery = { ...router.query };
-      if (!value || value === "all") delete newQuery[key];
-      else newQuery[key] = value;
-      router.push({ pathname: "/shop", query: newQuery }, undefined, { shallow: true });
-    },
-    [router]
-  );
-
   const handlePriceChange = (e) => {
     const [min, max] = e.target.value.split("-").map(Number);
     setPriceRange([min, max]);
   };
 
-  // Page Title
+  // Proper baseUrl
+  const baseUrl =
+    baseUrlFromServer || (typeof window !== "undefined" ? window.location.origin : "");
+
+  // SEO Title & Description
   const heading =
     selectedCategory !== "all"
       ? `${selectedCategory[0].toUpperCase()}${selectedCategory.slice(1)} Collection`
       : "Shop All Products";
 
-  const baseUrl =
-    baseUrlFromServer ||
-    (typeof window !== "undefined" ? window.location.origin : "");
-
   const pageTitle =
     selectedCategory !== "all" ? `${heading} | Warea Jewellery` : "Shop Jewellery Online | Warea";
 
-  const pageDesc = `Discover exquisite ${
+  const pageDesc = `Discover premium ${
     selectedCategory === "all" ? "" : selectedCategory
-  } jewellery at Warea. Explore premium handcrafted anti-tarnish collections at affordable prices.`;
+  } jewellery at Warea Creations. Modern, elegant & handcrafted.`;
 
-  // ✅ JSON-LD structured data
   const itemListJson = useMemo(() => {
-    const sample = Array.isArray(initialProducts) ? initialProducts.slice(0, 5) : [];
+    const sample = initialProducts.slice(0, 5);
     return JSON.stringify({
       "@context": "https://schema.org",
       "@type": "ItemList",
@@ -81,9 +69,6 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
     });
   }, [initialProducts, heading, baseUrl]);
 
-  // ✅ simple local empty state (only used when SSR returns no products)
-  const isEmptyOnServer = !initialProducts || initialProducts.length === 0;
-
   return (
     <>
       <Head>
@@ -95,21 +80,23 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
         />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
+        <meta property="og:url" content={`${baseUrl}/shop`} />
         <meta property="og:image" content={`${baseUrl}/logo.png`} />
         <meta name="twitter:card" content="summary_large_image" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: itemListJson }} />
       </Head>
 
-      {/* ✅ MAIN WRAPPER - hardened against horizontal overflow */}
-      <main className="w-full max-w-full overflow-x-hidden overflow-y-visible">
-        {/* ✅ Banner */}
-        <section className="bg-gradient-to-b from-gray-50 to-white/90 border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+      {/* ✅ Main Wrapper */}
+      <main className="w-full min-w-0 bg-[#fdfaf5]">
+
+        {/* ✅ HERO */}
+        <section className="border-b w-full">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-center">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-3xl sm:text-4xl font-serif font-bold tracking-tight"
+              className="text-3xl sm:text-4xl font-serif font-bold break-words"
             >
               {heading}
             </motion.h1>
@@ -119,16 +106,11 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
           </div>
         </section>
 
-        {/* ✅ Categories Row – fully padded, scrollable, no right cut */}
-        <div className="border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
-            {/* edge-to-edge scroll on mobile while protected by outer container */}
+        {/* ✅ CATEGORY TABS */}
+        <div className="border-b bg-[#fdfaf5] w-full">
+          <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-4">
             <div className="-mx-4 sm:mx-0">
-              <div
-                role="tablist"
-                aria-label="Shop categories"
-                className="flex gap-3 overflow-x-auto no-scrollbar whitespace-nowrap px-4 pr-8 sm:px-0 min-w-0 snap-x snap-mandatory scroll-px-4"
-              >
+              <div className="flex overflow-x-auto no-scrollbar gap-3 whitespace-nowrap px-4 pr-8">
                 {categories.map((cat) => {
                   const isActive = selectedCategory === cat;
                   return (
@@ -136,12 +118,11 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
                       key={cat}
                       href={cat === "all" ? "/shop" : `/shop?cat=${cat}`}
                       shallow
-                      className={`px-5 py-2.5 rounded-full text-sm border transition font-medium snap-start ${
+                      className={`px-5 py-2.5 rounded-full text-sm border font-medium flex-shrink-0 ${
                         isActive
                           ? "bg-black text-white border-black shadow"
                           : "bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100"
                       }`}
-                      aria-current={isActive ? "page" : undefined}
                     >
                       {cat.charAt(0).toUpperCase() + cat.slice(1)}
                     </Link>
@@ -152,35 +133,38 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
           </div>
         </div>
 
-        {/* ✅ Sticky Filters – safe width & subtle UI polish */}
-        <div className="sticky top-[56px] sm:top-[64px] bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur-md border-b z-30 w-full">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
+        {/* ✅ FILTER SECTION (Sticky) */}
+        <div className="sticky top-[56px] sm:top-[64px] bg-white/90 backdrop-blur border-b z-30 w-full">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center flex-wrap gap-3">
             <button
-              onClick={() => setShowFilters((p) => !p)}
-              className="lg:hidden flex items-center gap-2 border px-4 py-2 rounded-md text-sm bg-white hover:bg-gray-50"
               type="button"
+              onClick={() => setShowFilters((p) => !p)}
+              className="lg:hidden flex items-center gap-2 border px-4 py-2 rounded-md text-sm bg-white"
             >
               <SlidersHorizontal size={16} />
               {showFilters ? "Hide Filters" : "Show Filters"}
             </button>
 
-            {/* Price Filter */}
-            <div className={`${showFilters ? "flex" : "hidden lg:flex"} items-center gap-3`}>
-              <label className="text-sm font-medium">Price:</label>
-              <select
-                value={`${priceRange[0]}-${priceRange[1]}`}
-                onChange={handlePriceChange}
-                className="border px-3 py-2 text-sm rounded-md bg-white"
-              >
-                <option value="0-10000">All Prices</option>
-                <option value="0-500">Under ₹500</option>
-                <option value="500-1000">₹500–₹1000</option>
-                <option value="1000-2000">₹1000–₹2000</option>
-                <option value="2000-5000">₹2000–₹5000</option>
-              </select>
-            </div>
+            {showFilters && (
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium">Price:</label>
+                <select
+                  value={`${priceRange[0]}-${priceRange[1]}`}
+                  onChange={(e) => {
+                    const [min, max] = e.target.value.split("-").map(Number);
+                    setPriceRange([min, max]);
+                  }}
+                  className="border px-3 py-2 text-sm rounded-md bg-white"
+                >
+                  <option value="0-10000">All Prices</option>
+                  <option value="0-500">Under ₹500</option>
+                  <option value="500-1000">₹500–₹1000</option>
+                  <option value="1000-2000">₹1000–₹2000</option>
+                  <option value="2000-5000">₹2000–₹5000</option>
+                </select>
+              </div>
+            )}
 
-            {/* Sort */}
             <div className="ml-auto">
               <select
                 value={sort}
@@ -197,25 +181,16 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
           </div>
         </div>
 
-        {/* ✅ Product Grid / Empty State Wrapper – overflow safe & mobile padding tuned */}
+        {/* ✅ PRODUCT GRID SECTION */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-10 overflow-x-hidden"
+          className="w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-8"
         >
-          {isEmptyOnServer ? (
-            <div className="min-h-[40vh] grid place-items-center text-center">
-              <div>
-                <div className="mx-auto mb-3 h-10 w-10 rounded-full bg-gray-100 grid place-items-center">
-                  {/* small placeholder icon circle */}
-                  <span className="text-gray-400 text-xl">🛍️</span>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">No products found</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Try adjusting your filters or check back soon.
-                </p>
-              </div>
+          {initialProducts.length === 0 ? (
+            <div className="min-h-[40vh] grid place-items-center">
+              <h3 className="text-lg font-semibold text-gray-800">No products found</h3>
             </div>
           ) : (
             <ProductGrid
@@ -232,19 +207,22 @@ export default function ShopPage({ initialProducts, baseUrlFromServer }) {
   );
 }
 
-// ✅ SSR — unchanged
+// ✅ SSR — Safe Data
 export async function getServerSideProps() {
   try {
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
+
     const products = snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
         ...data,
         createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : null,
+        updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : null,
       };
     });
+
     return {
       props: {
         initialProducts: products,
@@ -252,7 +230,9 @@ export async function getServerSideProps() {
       },
     };
   } catch (err) {
-    console.error("❌ SSR Error (Shop):", err);
-    return { props: { initialProducts: [], baseUrlFromServer: "" } };
+    console.error("❌ SSR Error (shop page):", err);
+    return {
+      props: { initialProducts: [], baseUrlFromServer: "" },
+    };
   }
 }

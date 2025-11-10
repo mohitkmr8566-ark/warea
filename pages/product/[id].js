@@ -564,7 +564,7 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const { id } = router.query;
 
-  const { addItem } = useCart();
+  const { items, addItem, updateQuantity, removeItem } = useCart();
   const { inWishlist, toggleItem } = useWishlist();
   const { user } = useAuth() || {};
 
@@ -730,6 +730,13 @@ export default function ProductDetailPage() {
   );
 
   /* ------------------------------ Actions ------------------------------ */
+    //New Lines
+  const cartItem = useMemo(
+    () => (items && product ? items.find((p) => p.id === product.id) : null),
+    [items, product]
+  );
+  const currentQty = useMemo(() => cartItem?.qty || 0, [cartItem]);
+
   const addToCart = useCallback(() => {
     if (!product) return;
     addItem?.({
@@ -739,8 +746,59 @@ export default function ProductDetailPage() {
       discountPct: priceBlock.discountPct,
       image: images?.[0]?.url,
     });
-    toast.success(`${product.title} added to Cart ✅`);
-  }, [addItem, product, priceBlock, images]);
+
+    // ✅ NEW Actionable Toast
+    toast.custom((t) => (
+      <motion.div
+         initial={{ opacity: 0, y: -20 }}
+         animate={{ opacity: 1, y: 0 }}
+         exit={{ opacity: 0, y: -20 }}
+         className="relative bg-white p-4 rounded-xl shadow-lg border flex gap-4 items-start"
+      >
+        {/* Checkmark */}
+        <div className="flex-shrink-0 text-green-600 bg-green-100 rounded-full p-1.5">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        </div>
+
+        {/* Text & Buttons */}
+        <div className="flex-1">
+          <p className="font-semibold text-gray-900">Added to Cart!</p>
+          <p className="text-sm text-gray-600 line-clamp-1">
+            {product.title}
+          </p>
+
+          <div className="mt-3 flex gap-3">
+            <Link
+              href="/cart"
+              onClick={() => toast.dismiss(t.id)}
+              className="px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg"
+            >
+              View Cart
+            </Link>
+              <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-4 py-2 text-sm font-medium bg-white text-gray-700 rounded-lg border hover:bg-gray-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+
+        {/* Close Icon (top right) */}
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+          >
+            <X size={18} />
+          </button>
+        </motion.div>
+      ), {
+        position: "top-right",
+        duration: 6000, // 6 seconds
+      });
+}, [addItem, product, priceBlock, images]);
 
   const buyNow = useCallback(() => {
     addToCart();
@@ -759,6 +817,22 @@ export default function ProductDetailPage() {
     if (wished) toast("Removed from Wishlist ❌");
     else toast.success("Added to Wishlist ❤️");
   }, [product, toggleItem, priceBlock, images, wished]);
+
+  // ✅ ADD THESE NEW FUNCTIONS
+  const handleIncrement = useCallback(() => {
+    if (!product) return;
+    updateQuantity?.(product.id, currentQty + 1);
+  }, [updateQuantity, product, currentQty]);
+
+  const handleDecrement = useCallback(() => {
+    if (!product) return;
+    if (currentQty > 1) {
+      updateQuantity?.(product.id, currentQty - 1);
+    } else {
+      removeItem?.(product.id);
+      toast.success(`${product.title} removed from Cart`);
+    }
+  }, [updateQuantity, removeItem, product, currentQty]);
 
   const checkPincode = useCallback(
     (e) => {
@@ -1132,13 +1206,51 @@ export default function ProductDetailPage() {
 
             {/* CTAs */}
             <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={addToCart}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-md hover:bg-gray-800"
-              >
-                <ShoppingCart size={18} /> Add to Cart
-              </button>
+              {/* 🟢 NEW CONDITIONAL BUTTON */}
+              {currentQty === 0 ? (
+                // 1. "ADD TO CART" BUTTON (If not in cart)
+                <button
+                  type="button"
+                  onClick={addToCart}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-md hover:bg-gray-800"
+                >
+                  <ShoppingCart size={18} /> Add to Cart
+                </button>
+              ) : (
+                // 2. "QTY" and "GO TO CART" (If in cart)
+                <>
+                {/* --- Quantity Selector --- */}
+                <div className="w-full sm:w-auto flex items-center justify-between px-3 py-0 border border-gray-300 rounded-lg shadow-md">
+                  <button
+                    type="button"
+                    onClick={handleDecrement}
+                    className="px-4 py-3 text-lg font-medium text-gray-700 hover:bg-gray-100 rounded-l-lg"
+                    aria-label="Decrease quantity"
+                  >
+                    -
+                  </button>
+                  <span className="px-5 text-sm font-medium text-gray-900">
+                    {currentQty}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleIncrement}
+                    className="px-4 py-3 text-lg font-medium text-gray-700 hover:bg-gray-100 rounded-r-lg"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* --- Go to Cart Button --- */}
+                <Link
+                  href="/cart"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-md hover:bg-gray-800"
+                >
+                  <ShoppingCart size={18} /> Go to Cart
+                </Link>
+              </>
+            )}
               <button
                 type="button"
                 onClick={buyNow}

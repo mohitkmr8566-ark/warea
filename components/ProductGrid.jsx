@@ -22,39 +22,35 @@ function ProductGrid({
   minPrice = 0,
   maxPrice = Infinity,
   pageSize = DEFAULT_PAGE_SIZE,
+  initialProducts,
 }) {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(initialProducts || []);
   const [lastDoc, setLastDoc] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialProducts?.length);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
   const mountedRef = useRef(true);
   const observerRef = useRef(null);
 
-  const normalize = (str = "") => str.toString().trim().toLowerCase();
+  const normalize = (str = "") =>
+    typeof str === "string" ? str.trim().toLowerCase() : "";
 
   const applyFilters = useCallback(
     (items) => {
       let filtered = items;
 
-      if (onlyFeatured) filtered = filtered.filter((p) => p.isFeatured === true);
+      if (onlyFeatured) filtered = filtered.filter((p) => p.isFeatured);
 
       if (category && category !== "all") {
         const cat = normalize(category);
-        filtered = filtered.filter((p) => {
-          const productCat = normalize(p.category);
-          if (!productCat) return false;
-          return (
-            productCat === cat ||
-            productCat + "s" === cat ||
-            productCat === cat + "s"
-          );
-        });
+        filtered = filtered.filter(
+          (p) => normalize(p.category) === cat || normalize(p.category) + "s" === cat
+        );
       }
 
       filtered = filtered.filter((p) => {
-        const price = Number(p.price) || 0;
+        const price = +p.price || 0;
         return price >= minPrice && price <= maxPrice;
       });
 
@@ -66,7 +62,8 @@ function ProductGrid({
         filtered = [...filtered].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
       } else if (sort === "new-arrivals") {
         filtered = [...filtered].sort(
-          (a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
+          (a, b) =>
+            (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
         );
       }
 
@@ -75,24 +72,24 @@ function ProductGrid({
     [onlyFeatured, category, sort, minPrice, maxPrice]
   );
 
-  const featuredFallback = useCallback(async (pageLimit) => {
-    const q2 = query(
+  const featuredFallback = useCallback(async (limitSize) => {
+    const q = query(
       collection(db, "products"),
       orderBy("createdAt", "desc"),
-      fbLimit(pageLimit)
+      fbLimit(limitSize)
     );
-    const snap2 = await getDocs(q2);
-    return snap2.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const snap = await getDocs(q);
+    return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   }, []);
 
   const dedupeMerge = useCallback((prev, next) => {
     const map = new Map(prev.map((p) => [p.id, p]));
     next.forEach((item) => map.set(item.id, item));
-    return Array.from(map.values());
+    return [...map.values()];
   }, []);
 
   const fetchInitial = useCallback(async () => {
-    setLoading(true);
+    setLoading(!products.length);
     try {
       const q1 = query(
         collection(db, "products"),
@@ -106,7 +103,6 @@ function ProductGrid({
       if (onlyFeatured && filtered.length === 0) {
         const latest = await featuredFallback(pageSize);
         filtered = applyFilters(latest);
-        if (filtered.length === 0) filtered = latest;
       }
 
       if (!mountedRef.current) return;
@@ -114,11 +110,11 @@ function ProductGrid({
       setLastDoc(snap.docs[snap.docs.length - 1] || null);
       setHasMore(snap.docs.length === pageSize);
     } catch (err) {
-      console.error("❌ Error fetching products:", err);
+      console.error("❌ Error loading products:", err);
     } finally {
-      if (mountedRef.current) setLoading(false);
+      mountedRef.current && setLoading(false);
     }
-  }, [applyFilters, featuredFallback, onlyFeatured, pageSize]);
+  }, [applyFilters, featuredFallback, onlyFeatured, pageSize, products.length]);
 
   const loadMore = useCallback(async () => {
     if (!lastDoc || loadingMore) return;
@@ -141,7 +137,7 @@ function ProductGrid({
     } catch (err) {
       console.error("❌ Error loading more:", err);
     } finally {
-      if (mountedRef.current) setLoadingMore(false);
+      mountedRef.current && setLoadingMore(false);
     }
   }, [lastDoc, loadingMore, applyFilters, dedupeMerge, pageSize]);
 
@@ -171,12 +167,12 @@ function ProductGrid({
     };
   }, [fetchInitial]);
 
-  // ✅ Loading skeleton (responsive-safe now)
+  // ✅ Loading state
   if (loading) {
     return (
-      <div className="w-full max-w-full overflow-x-hidden grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 px-2">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-2">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-64 rounded-xl bg-gray-200" />
+          <div key={i} className="h-64 bg-gray-200 rounded-lg animate-pulse" />
         ))}
       </div>
     );
@@ -185,42 +181,36 @@ function ProductGrid({
   // ✅ No products
   if (!products.length) {
     return (
-      <div className="w-full max-w-full overflow-x-hidden text-center py-20 text-gray-500 px-4">
-        <img src="/empty-state.svg" alt="No products" className="mx-auto mb-4 w-32 opacity-70" />
-        <p className="text-lg font-medium">No products found</p>
-        <p className="text-sm text-gray-400 mt-1">
-          Try adjusting your filters or browse another category.
-        </p>
+      <div className="text-center py-20">
+        <img src="/empty-state.svg" alt="No products" className="w-32 mx-auto opacity-75 mb-4" />
+        <p className="text-gray-600 font-medium">No products found</p>
       </div>
     );
   }
 
-  // ✅ Final Product Grid
+  // ✅ Product grid — FIXED 2-column layout on mobile
   return (
-    <div className="w-full max-w-full overflow-x-hidden">
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 px-2">
-        <AnimatePresence>
-          {products.map((p, idx) => {
-            const isLast = idx === products.length - 1;
-            return (
-              <motion.div
-                key={p.id}
-                ref={isLast ? lastProductRef : null}
-                className="p-1 sm:p-2 min-w-0"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <ProductCard product={p} />
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+    <div className="w-full">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-2">
+        {products.map((product, idx) => {
+          const isLast = idx === products.length - 1;
+          return (
+            <motion.div
+              key={product.id}
+              ref={isLast ? lastProductRef : null}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="min-w-0"
+            >
+              <ProductCard product={product} />
+            </motion.div>
+          );
+        })}
       </div>
 
       {loadingMore && (
-        <div className="col-span-full flex justify-center py-6" aria-live="polite">
+        <div className="flex justify-center py-6">
           <div className="h-6 w-6 rounded-full border-2 border-gray-300 border-t-gray-700 animate-spin" />
         </div>
       )}
