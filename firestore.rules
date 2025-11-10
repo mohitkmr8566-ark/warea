@@ -1,6 +1,9 @@
 rules_version = '2';
 
-// Helpers
+// -----------------------------
+// 🔐 Helper Functions
+// -----------------------------
+
 function isSignedIn() {
   return request.auth != null && request.auth.token.email != null;
 }
@@ -17,7 +20,9 @@ function isOwner(emailField) {
   return isSignedIn() && emailField == request.auth.token.email;
 }
 
-// Order validation (unchanged)
+// -----------------------------
+// ✅ Order Data Validation
+// -----------------------------
 function isValidOrder() {
   return request.resource.data.keys().hasAll([
       'userId', 'customer', 'items', 'total', 'status', 'createdAt', 'payment'
@@ -38,7 +43,9 @@ function isValidOrder() {
     );
 }
 
-// Review validation for create
+// -----------------------------
+// ✅ Review Validation
+// -----------------------------
 function isValidReview() {
   return request.resource.data.keys().hasAll(['userId', 'rating', 'comment', 'createdAt']) &&
     isOwner(request.resource.data.userId) &&
@@ -47,64 +54,53 @@ function isValidReview() {
     (request.resource.data.comment is string);
 }
 
+// -----------------------------
+// 🔒 MAIN RULES
+// -----------------------------
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /* --------------------------- PRODUCTS --------------------------- */
     match /products/{productId} {
-      // product listing & PDP => public read
+      // Public read access for product listings and PDP
       allow read: if true;
 
-      // admin-only writes
+      // Admins only can write / update / delete products
       allow write: if isAdmin();
 
-      // reviews under products (fine to keep, but we also add a wildcard below)
+      // Product reviews (nested)
       match /reviews/{reviewId} {
         allow read: if true;
         allow create: if isSignedIn() && isValidReview();
 
-        // Moderation & reporting rules (admins OR signed-in reporter increment)
+        // Admin moderation or user flagging
         allow update: if
           isAdmin()
           ||
           (
             isSignedIn() &&
-            // must be a reporting (flagging) action
             request.resource.data.flagged == true &&
-            // flags must be numeric & increment by at least +1 (first-time flag allowed)
             (request.resource.data.flags is number) &&
             (
               !('flags' in resource.data) ||
               request.resource.data.flags >= resource.data.flags + 1
             ) &&
-            // no content fields changed
             request.resource.data.comment == resource.data.comment &&
             request.resource.data.rating == resource.data.rating &&
             request.resource.data.userId == resource.data.userId &&
-            // only allowed keys for this operation
-            request.writeFields.hasOnly([
-              'flagged','flags'
-            ])
+            request.writeFields.hasOnly(['flagged','flags'])
           );
 
-        // deletion rules
+        // Allow review deletion (user’s own or admin)
         allow delete: if isSignedIn() && isOwner(resource.data.userId);
         allow delete: if isAdmin();
       }
     }
 
-    /* --------------------------- WILDCARD REVIEWS (collectionGroup safe) ---------------------------
-       This ensures collectionGroup(...) queries (and reads on reviews under any parent path)
-       are matched by rules. Keep in sync with the nested rules above.
-    ------------------------------------------------------------------------------ */
+    /* --------------------------- GLOBAL REVIEWS (collectionGroup) --------------------------- */
     match /{anyPath=**}/reviews/{reviewId} {
-      // allow reading reviews anywhere (PDP, public listing)
       allow read: if true;
-
-      // creating a review under any parent path (e.g. products/{id}/reviews)
       allow create: if isSignedIn() && isValidReview();
-
-      // update: same moderation rules as above
       allow update: if
         isAdmin()
         ||
@@ -121,8 +117,6 @@ service cloud.firestore {
           request.resource.data.userId == resource.data.userId &&
           request.writeFields.hasOnly(['flagged','flags'])
         );
-
-      // deletion rules
       allow delete: if isSignedIn() && isOwner(resource.data.userId);
       allow delete: if isAdmin();
     }
@@ -135,34 +129,38 @@ service cloud.firestore {
 
     /* --------------------------- ORDERS --------------------------- */
     match /orders/{orderId} {
-  // ✅ Only Admins OR the user who placed order can read
-  allow read: if isAdmin() || (isSignedIn() && isOwner(resource.data.userId));
+      // ✅ Admins or order owners can read
+      allow read: if isAdmin() || (isSignedIn() && isOwner(resource.data.userId));
 
-  // ✅ Users create orders themselves
-  allow create: if isValidOrder();
+      // ✅ Users can create their own orders
+      allow create: if isValidOrder();
 
-  // ⛔ No user or admin should overwrite order documents directly (handled by backend)
-  allow update, delete: if false;
+      // ✅ Admins can update order status (e.g., shipped, delivered, cancelled)
+      allow update: if isAdmin();
 
-  /* ---------------- REPLACEMENTS (SUBCOLLECTION) ---------------- */
-  match /replacements/{replaceId} {
-    // ✅ Owner of order OR admin can read
-    allow read: if isAdmin()
-                || (isSignedIn() && isOwner(resource.data.userId));
+      // ❌ Nobody (not even admin) should delete orders directly
+      allow delete: if false;
 
-    // ✅ User may create replacement request *only for their own order*
-    allow create: if isSignedIn()
-                  && isOwner(resource.data.userId)             // ✅ Now checks order's owner correctly
-                  && request.resource.data.keys().hasAll(['reason', 'status', 'createdAt', 'userId'])
-                  && request.resource.data.userId == request.auth.token.email;
+      /* ---------------- REPLACEMENTS (SUBCOLLECTION) ---------------- */
+      match /replacements/{replaceId} {
+        // Admin or order owner can read
+        allow read: if isAdmin()
+                    || (isSignedIn() && isOwner(resource.data.userId));
 
-    // ✅ Only Admin can update replacement request (approve/reject)
-    allow update: if isAdmin();
+        // User can request replacement for their order
+        allow create: if isSignedIn()
+                      && isOwner(resource.data.userId)
+                      && request.resource.data.keys().hasAll(['reason', 'status', 'createdAt', 'userId'])
+                      && request.resource.data.userId == request.auth.token.email;
 
-    // ✅ Only Admin can delete (if needed)
-    allow delete: if isAdmin();
-  }
-}
+        // Only admin can approve / reject replacements
+        allow update: if isAdmin();
+
+        // Only admin can delete replacements
+        allow delete: if isAdmin();
+      }
+    }
+
     /* --------------------------- USERS --------------------------- */
     match /users/{userEmail} {
       allow read, create, update: if isOwner(userEmail);
