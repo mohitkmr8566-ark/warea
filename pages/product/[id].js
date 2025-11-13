@@ -1,4 +1,4 @@
-// pages/product/[id].js
+// pages/product/[id].js -- fix
 "use client";
 
 import Head from "next/head";
