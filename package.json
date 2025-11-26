@@ -6,13 +6,18 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/generateProductSitemap.js && next-sitemap",
     "start": "next start",
     "lint": "eslint",
+    "sitemap:gen": "next-sitemap",
+    "sitemap:local": "npm run build && npm run sitemap:gen",
+    "generate:product-sitemap": "node scripts/generateProductSitemap.js",
     "bulk:append-images:dry": "node scripts/appendExtraImages.js --dry",
     "bulk:append-images": "node scripts/appendExtraImages.js",
     "migrate:products": "node --env-file=.env.local scripts/migrateProductImages.js",
     "cleanup:products": "node --env-file=.env.local scripts/cleanupOldProductFields.js"
   },
+
   "dependencies": {
     "@next/bundle-analyzer": "^16.0.1",
     "@sendgrid/mail": "^8.1.6",
