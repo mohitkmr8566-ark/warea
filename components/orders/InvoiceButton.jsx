@@ -11,10 +11,21 @@ export default function InvoiceButton({
 }) {
   const [loading, setLoading] = useState(false);
 
-  // ✅ Method 1: Server-generated PDF
+  // prefer explicit NEXT_PUBLIC_BASE_URL (set on Vercel). Fallback to runtime origin or localhost.
+  const baseURL =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+
+  // ✅ Method 1: Server-generated PDF (production-safe absolute URL)
   const downloadServerInvoice = () => {
     if (!orderId) return;
-    window.open(`/api/invoice/${orderId}`, "_blank");
+    try {
+      const newWin = window.open(`${baseURL}/api/invoice/${orderId}`, "_blank");
+      // try to mitigate opener risk if browser allows
+      if (newWin) try { newWin.opener = null; } catch {}
+    } catch (err) {
+      console.error("Invoice download error:", err);
+    }
   };
 
   // ✅ Method 2: Client-side PDF (optional, seldom used now)
@@ -57,7 +68,8 @@ export default function InvoiceButton({
   return (
     <button
       onClick={handleClick}
-      disabled={loading}
+      disabled={loading || !orderId}             // <-- disable when no orderId
+      aria-label={label}
       className={`${baseClasses} ${variants[variant]} ${
         loading ? "opacity-70 cursor-not-allowed" : ""
       }`}

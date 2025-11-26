@@ -58,6 +58,14 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [timelineOpen, setTimelineOpen] = useState(false);
 
+  // production-safe base URL for invoice links (client-side)
+  const baseURL = useMemo(
+    () =>
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"),
+    []
+  );
+
   // ⚡ Live Firestore Listener
   useEffect(() => {
     if (!id) return;
@@ -100,7 +108,16 @@ export default function OrderDetailPage() {
 
   const handleDownloadInvoice = () => {
     if (!order?.id) return;
-    window.open(`/api/invoice/${order.id}`, "_blank");
+    try {
+      const url = `${baseURL}/api/invoice/${order.id}`;
+      const newWin = window.open(url, "_blank");
+      if (newWin) {
+        try { newWin.opener = null; } catch {}
+      }
+    } catch (err) {
+      console.error("Failed to open invoice:", err);
+      toast.error("Unable to open invoice. Please try again.");
+    }
   };
 
   // 🧾 Loading State (Shimmer UI)

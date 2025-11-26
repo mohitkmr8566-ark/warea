@@ -101,6 +101,15 @@ export default function AdminReplacementsPage() {
   const [qText, setQText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // production-safe base URL for absolute invoice links (client-side)
+  const baseURL = useMemo(
+    () =>
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"),
+    []
+  );
+
+  // Auth + admin check
   if (!user) {
     return (
       <div className="min-h-[60vh] grid place-items-center">
@@ -321,9 +330,9 @@ export default function AdminReplacementsPage() {
                         View Order
                       </Link>
                       <a
-                        href={`/api/invoice/${r.orderId}`}
+                        href={`${baseURL}/api/invoice/${r.orderId}`}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50"
                       >
                         Invoice
@@ -398,9 +407,9 @@ export default function AdminReplacementsPage() {
                               View Order
                             </Link>
                             <a
-                              href={`/api/invoice/${r.orderId}`}
+                              href={`${baseURL}/api/invoice/${r.orderId}`}
                               target="_blank"
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                               className="text-xs text-blue-600 hover:underline"
                             >
                               Invoice

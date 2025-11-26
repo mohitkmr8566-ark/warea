@@ -70,6 +70,14 @@ export default function AdminOrderDetails() {
   const { id } = router.query;
   const { user } = useAuth();
 
+    // Production-safe base URL for external links (use NEXT_PUBLIC_BASE_URL on Vercel)
+  const baseURL = useMemo(
+  () =>
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"),
+  []
+);
+
   const [activeTab, setActiveTab] = useState("order"); // 'order' | 'replacements' | 'history'
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -265,9 +273,9 @@ export default function AdminOrderDetails() {
             <div className="flex items-center gap-2">
               <InvoiceButton orderId={order.id} />{/* server-generated invoice */}
               <a
-                href={`/api/invoice/${order.id}`}
+                href={`${baseURL}/api/invoice/${order.id}`}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="px-4 py-2 rounded-md border text-sm hover:bg-gray-50"
                 title="Open invoice in new tab"
               >
@@ -558,9 +566,9 @@ export default function AdminOrderDetails() {
                     View Public Order Page
                   </Link>
                   <a
-                    href={`/api/invoice/${order.id}`}
+                    href={`${baseURL}/api/invoice/${order.id}`}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="px-3 py-1.5 rounded-md border hover:bg-gray-50"
                   >
                     Open Invoice
