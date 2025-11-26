@@ -615,6 +615,8 @@ export default function ProductDetailPage() {
             makingPct: data.makingPct,
             gstPct: data.gstPct,
             sku: data.sku || "",
+            brand: data.brand || "Warea",          // <-- ADDED
+            availability: data.availability || "IN_STOCK", // <-- ADDED
             images: coerceImages(data),
           };
           setProduct(prod);

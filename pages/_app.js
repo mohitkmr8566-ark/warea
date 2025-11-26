@@ -16,17 +16,18 @@ import { Toaster } from "react-hot-toast";
 
 import SEO from "../next-seo.config";
 
+// NEW: JSON-LD injector + schema helpers
+import JsonLdInjector from "@/components/seo/JsonLdInjector";
+import { getBaseUrl, getOrganizationSchema, getWebsiteSchema } from "@/lib/seoSchemas";
+
 export default function MyApp({ Component, pageProps, router }) {
   // ✅ No conditional DOM classes (prevents hydration mismatches)
 
   // ✅ AFTER (The fix)
   const isFullWidthPage = router?.pathname === "/" || router?.pathname.startsWith("/shop");
 
-  // ✅ Safe base URL detection (SSR + CSR)
-  const baseUrl =
-    typeof window === "undefined"
-      ? process.env.NEXT_PUBLIC_BASE_URL || "https://warea.vercel.app"
-      : window.location.origin;
+  // Use canonical base URL helper (handles SSR + CSR)
+  const baseUrl = getBaseUrl();
 
   const GA_ID = process.env.NEXT_PUBLIC_GTAG_ID || "G-XXXXXXXXXX";
 
@@ -40,28 +41,14 @@ export default function MyApp({ Component, pageProps, router }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         {/* No preload of local static assets (prevents hydration reload loops) */}
-
-        {/* ✅ Basic Website Schema */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebSite",
-              url: baseUrl,
-              name: "Warea Jewellery",
-              potentialAction: {
-                "@type": "SearchAction",
-                target: `${baseUrl}/search?query={search_term_string}`,
-                "query-input": "required name=search_term_string",
-              },
-            }),
-          }}
-        />
       </Head>
+
 
       {/* ✅ Default SEO Config Applied to All Pages */}
       <DefaultSeo {...SEO} />
+
+      {/* ✅ Inject Organization + Website JSON-LD (site-wide) */}
+      <JsonLdInjector jsonld={[getOrganizationSchema(baseUrl), getWebsiteSchema(baseUrl)]} />
 
       {/* ✅ Google Analytics (safe, CSR only) */}
       <Script
