@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Head from "next/head";
 import { CheckCircle2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import InvoiceButton from "@/components/orders/InvoiceButton";
@@ -16,6 +16,14 @@ export default function OrderSuccessPage() {
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // production-safe base URL for invoice links (client-side)
+  const baseURL = useMemo(
+    () =>
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"),
+    []
+  );
 
   // ✅ Fetch Order Details
   useEffect(() => {
@@ -34,9 +42,10 @@ export default function OrderSuccessPage() {
     })();
   }, [id]);
 
-  // ✅ Auto-download Invoice Once
+  // ✅ Auto-download Invoice Once (production-safe absolute URL)
   useEffect(() => {
     if (!order?.id) return;
+
     const allowed = ["paid", "confirmed", "processing", "completed", "success"];
     const status = String(order.status || "").toLowerCase();
 
@@ -45,13 +54,20 @@ export default function OrderSuccessPage() {
 
     if (!already && allowed.includes(status)) {
       try {
-        window.open(`/api/invoice/${order.id}`, "_blank");
+        const url = `${baseURL}/api/invoice/${order.id}`;
+        const newWin = window.open(url, "_blank");
+        // mitigate window.opener risk where possible
+        if (newWin) {
+          try {
+            newWin.opener = null;
+          } catch {}
+        }
         sessionStorage.setItem(key, "true");
-      } catch {
-        console.warn("Auto-invoice generation skipped.");
+      } catch (err) {
+        console.warn("Auto-invoice generation skipped.", err);
       }
     }
-  }, [order]);
+  }, [order, baseURL]);
 
   // ✅ Helper for ETA
   const getDeliveryETA = (createdAt) => {
@@ -144,9 +160,7 @@ export default function OrderSuccessPage() {
                           {item.name} × {item.qty}
                         </span>
                       </div>
-                      <span>
-                        ₹{(item.price * item.qty).toLocaleString("en-IN")}
-                      </span>
+                      <span>₹{(item.price * item.qty).toLocaleString("en-IN")}</span>
                     </div>
                   ))}
                 </div>
@@ -172,9 +186,7 @@ export default function OrderSuccessPage() {
                 {/* ✅ Total */}
                 <div className="mt-4 pt-4 border-t flex justify-between font-semibold text-base">
                   <span>Total</span>
-                  <span>
-                    ₹{Number(order.total || 0).toLocaleString("en-IN")}
-                  </span>
+                  <span>₹{Number(order.total || 0).toLocaleString("en-IN")}</span>
                 </div>
               </>
             ) : (
