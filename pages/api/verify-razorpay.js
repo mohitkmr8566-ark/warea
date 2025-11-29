@@ -5,9 +5,22 @@ import { admin, adminDb } from "../../lib/firebaseAdmin";
 import { generateInvoiceBuffer } from "../../lib/invoice";
 import { zoneFromPincode, etaRange } from "@/lib/logistics";
 
+const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_BASE_URL || "*";
+
 export default async function handler(req, res) {
+  // CORS preflight support
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    return res.status(200).end();
+  }
+
+  // always set CORS header for normal responses too
+  res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
+
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader("Allow", "POST, OPTIONS");
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
