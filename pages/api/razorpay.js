@@ -6,6 +6,13 @@ import { v4 as uuidv4 } from "uuid";
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_BASE_URL || "*";
 
 export default async function handler(req, res) {
+  // DEBUG: short request + env logging (temporary)
+  console.log("DEBUG /api/razorpay called - method:", req.method);
+  console.log("DEBUG env: RAZORPAY_KEY_ID present:", !!process.env.RAZORPAY_KEY_ID);
+  console.log("DEBUG env: RAZORPAY_KEY_SECRET present:", !!process.env.RAZORPAY_KEY_SECRET);
+  console.log("DEBUG env: SERVICE_ACCOUNT present:", !!process.env.SERVICE_ACCOUNT);
+  console.log("DEBUG adminDb present:", !!adminDb);
+
   // CORS preflight support
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
@@ -35,7 +42,14 @@ export default async function handler(req, res) {
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!key_id || !key_secret) {
-      return res.status(500).json({ error: "Razorpay keys missing on server" });
+      console.error("Missing Razorpay keys:", { key_id: !!key_id, key_secret: !!key_secret });
+      return res.status(500).json({ error: "Razorpay keys missing on server", debug: { key_id: !!key_id, key_secret: !!key_secret } });
+    }
+
+    // Ensure firebase admin is available
+    if (!adminDb || !admin || !admin.firestore) {
+      console.error("Firebase admin not initialized or adminDb missing");
+      return res.status(500).json({ error: "Firebase admin not available on server", debug: { adminExists: !!admin, adminDbExists: !!adminDb } });
     }
 
     // 1) create Firestore order doc (pending)
@@ -68,7 +82,7 @@ export default async function handler(req, res) {
     const options = {
       amount: Math.round(amountNum * 100), // paise
       currency: process.env.NEXT_PUBLIC_CURRENCY || "INR",
-      receipt: `warea_${uuidv4()}`,
+      receipt: `warea_${Date.now()}`, // short & unique, always <= 40 chars
       payment_capture: 1,
       notes: {
         orderId: clientOrderId,
@@ -89,10 +103,14 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       razorpayOrder: rOrder,
+      order: rOrder,
       clientOrderId,
     });
   } catch (err) {
-    console.error("Create Razorpay order error:", err);
-    return res.status(500).json({ error: "Failed to create Razorpay order" });
+    // DEBUG: return JSON + log stack so client doesn't crash on res.json()
+    console.error("Create Razorpay order error (DEBUG):", err && err.stack ? err.stack : err);
+    const message = err && err.message ? err.message : "Unknown server error";
+    const stack = err && err.stack ? err.stack.split("\n").slice(0, 12).join("\n") : "";
+    return res.status(500).json({ error: "Failed to create Razorpay order", debugMessage: message, debugStack: stack });
   }
 }

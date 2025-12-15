@@ -8,6 +8,7 @@ import { zoneFromPincode, etaRange } from "@/lib/logistics";
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_BASE_URL || "*";
 
 export default async function handler(req, res) {
+
   // CORS preflight support
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
@@ -16,7 +17,6 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // always set CORS header for normal responses too
   res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
 
   if (req.method !== "POST") {
@@ -39,6 +39,7 @@ export default async function handler(req, res) {
 
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
     if (!keySecret) {
+      console.error("Razorpay secret missing on server");
       return res.status(500).json({ error: "Razorpay secret missing on server" });
     }
 
@@ -102,7 +103,7 @@ export default async function handler(req, res) {
           updatedAt: nowTS,
         });
       }
-      // send invoice/email below (if configured)
+
       const orderId = clientOrderId;
 
       // optional: invoice email
@@ -163,8 +164,10 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, orderId: newOrderId });
   } catch (err) {
-    console.error("Verify/save error:", err);
-    return res.status(500).json({ error: "Server error verifying payment" });
+    console.error("Verify/save error (DEBUG):", err && err.stack ? err.stack : err);
+    const message = err && err.message ? err.message : "Unknown server error";
+    const stack = err && err.stack ? err.stack.split("\n").slice(0, 12).join("\n") : "";
+    return res.status(500).json({ error: "Server error verifying payment", debugMessage: message, debugStack: stack });
   }
 }
 
