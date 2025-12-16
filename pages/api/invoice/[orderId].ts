@@ -1,7 +1,14 @@
-// pages/api/invoice/[orderId].ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { adminDb } from "../../../lib/firebaseAdmin";
+// 1. Import Firestore type for usage
+import { Firestore } from "firebase-admin/firestore";
 import { generateInvoiceBuffer } from "../../../lib/invoice";
+
+// 2. FIX: Import the entire module as a generic object
+import * as firebaseAdminModule from "../../../lib/firebaseAdmin";
+
+// 3. Force-cast the module to 'any' to bypass strict checks,
+//    then extract adminDb and tell TS it is a 'Firestore' instance.
+const adminDb = (firebaseAdminModule as any).adminDb as Firestore;
 
 function safeFilename(s: string) {
   return s.replace(/[^a-zA-Z0-9-_\.]/g, "-");
@@ -18,35 +25,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Invalid order ID" });
   }
 
-  const orderIdStr = orderId as string;
-
   try {
-    const snap = await adminDb.collection("orders").doc(orderIdStr).get();
+    const snap = await adminDb.collection("orders").doc(orderId).get();
     if (!snap.exists) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // --- TS fix: assert order exists and give it a safe type so generateInvoiceBuffer accepts it ---
-    const order = snap.data() as Record<string, any>; // <-- important: this removes the TS "possibly undefined" error
+    const order = snap.data() as Record<string, any>;
 
-    // generateInvoiceBuffer should return a Buffer, Uint8Array or ArrayBuffer
-    const buffer = await generateInvoiceBuffer(order, orderIdStr);
+    const buffer = await generateInvoiceBuffer(order, orderId);
+    const pdf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
 
-    const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-
-    // Security + caching headers
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="${safeFilename(`invoice-${orderIdStr}.pdf`)}"`
+      `inline; filename="${safeFilename(`invoice-${orderId}.pdf`)}"`
     );
-    res.setHeader("Content-Length", String(buf.length));
-    // private so browsers / proxies don't cache user-specific invoices
+    res.setHeader("Content-Length", String(pdf.length));
     res.setHeader("Cache-Control", "private, max-age=0, must-revalidate");
 
-    return res.status(200).send(buf);
+    return res.status(200).send(pdf);
   } catch (err: any) {
-    console.error("🔥 Invoice generation failed:", err?.message || err, err?.stack || "");
+    console.error("🔥 Invoice generation failed:", err);
     return res.status(500).json({ error: "Failed to generate invoice" });
   }
 }
