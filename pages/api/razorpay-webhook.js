@@ -1,11 +1,13 @@
 // pages/api/razorpay-webhook.js
-import admin from '../../lib/firebaseAdmin'; // adjust path if needed
-import crypto from 'crypto';
+
+import { admin, adminDb } from "../../lib/firebaseAdmin";
+import crypto from "crypto";
 
 export const config = {
-  api: { bodyParser: false },
+  api: { bodyParser: false }, // REQUIRED for Razorpay signature verification
 };
 
+// Read raw body
 async function buffer(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
@@ -13,69 +15,126 @@ async function buffer(req) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   const rawBody = await buffer(req);
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-  if (!secret) return res.status(500).end('Webhook secret not configured');
 
-  const expectedSignature = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-  const receivedSignature = req.headers['x-razorpay-signature'];
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error("❌ RAZORPAY_WEBHOOK_SECRET missing");
+    return res.status(500).json({ error: "Webhook secret not configured" });
+  }
+
+  // Verify signature
+  const expectedSignature = crypto
+    .createHmac("sha256", webhookSecret)
+    .update(rawBody)
+    .digest("hex");
+
+  const receivedSignature = req.headers["x-razorpay-signature"];
 
   if (!receivedSignature || expectedSignature !== receivedSignature) {
-    console.warn('Razorpay webhook signature mismatch');
-    return res.status(400).end('invalid signature');
+    console.warn("❌ Razorpay webhook signature mismatch");
+    return res.status(400).json({ error: "Invalid signature" });
   }
 
   let payload;
-  try { payload = JSON.parse(rawBody.toString()); }
-  catch (err) { console.error('Invalid webhook payload', err); return res.status(400).end('invalid payload'); }
+  try {
+    payload = JSON.parse(rawBody.toString());
+  } catch (err) {
+    console.error("❌ Invalid webhook JSON payload", err);
+    return res.status(400).json({ error: "Invalid payload" });
+  }
 
   try {
     const event = payload.event;
-    if (event === 'payment.captured' || event === 'payment.authorized') {
+
+    /**
+     * ✅ PAYMENT CAPTURED (FINAL SUCCESS)
+     */
+    if (event === "payment.captured") {
       const payment = payload.payload?.payment?.entity;
-      if (payment) {
-        const clientOrderId = payment?.notes?.orderId || payment?.notes?.clientOrderId;
-        if (clientOrderId) {
-          await admin.firestore().collection('orders').doc(clientOrderId).update({
-            status: 'paid',
-            payment,
-            paidAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        } else {
-          // fallback: match by razorpay order id
-          const razorpayOrderId = payment.order_id;
-          const q = await admin.firestore().collection('orders')
-            .where('payment.order_id', '==', razorpayOrderId).limit(1).get();
-          if (!q.empty) {
-            await q.docs[0].ref.update({
-              status: 'paid',
-              payment,
-              paidAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-          } else {
-            console.warn('Order not found for payment captured webhook', razorpayOrderId);
-          }
-        }
-      }
-    } else if (event === 'payment.failed') {
-      const payment = payload.payload?.payment?.entity;
-      const razorpayOrderId = payment?.order_id;
-      if (razorpayOrderId) {
-        const q = await admin.firestore().collection('orders')
-          .where('payment.order_id', '==', razorpayOrderId).limit(1).get();
+      if (!payment) return res.status(200).json({ ok: true });
+
+      const clientOrderId =
+        payment?.notes?.orderId || payment?.notes?.clientOrderId;
+
+      const updateData = {
+        status: "Paid", // ✅ canonical status
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        statusTimestamps: {
+          Paid: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        payment: {
+          source: "razorpay_webhook",
+          paymentId: payment.id,
+          orderId: payment.order_id,
+          method: payment.method,
+          captured: payment.captured,
+          raw: payment, // keep full payload for audits
+        },
+      };
+
+      if (clientOrderId) {
+        await adminDb
+          .collection("orders")
+          .doc(clientOrderId)
+          .set(updateData, { merge: true });
+      } else {
+        // Fallback match by razorpay order id
+        const q = await adminDb
+          .collection("orders")
+          .where("payment.order_id", "==", payment.order_id)
+          .limit(1)
+          .get();
+
         if (!q.empty) {
-          await q.docs[0].ref.update({ status: 'payment_failed', payment });
+          await q.docs[0].ref.set(updateData, { merge: true });
+        } else {
+          console.warn(
+            "⚠️ Webhook payment captured but order not found:",
+            payment.order_id
+          );
         }
       }
-    } else if (event === 'order.paid') {
-      // handle if needed
     }
-    // respond OK
+
+    /**
+     * ❌ PAYMENT FAILED
+     */
+    else if (event === "payment.failed") {
+      const payment = payload.payload?.payment?.entity;
+      if (!payment) return res.status(200).json({ ok: true });
+
+      const q = await adminDb
+        .collection("orders")
+        .where("payment.order_id", "==", payment.order_id)
+        .limit(1)
+        .get();
+
+      if (!q.empty) {
+        await q.docs[0].ref.set(
+          {
+            status: "Payment_Failed",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            payment: {
+              source: "razorpay_webhook",
+              failed: true,
+              raw: payment,
+            },
+          },
+          { merge: true }
+        );
+      }
+    }
+
+    // Ignore other events safely (order.paid, refund.created, etc.)
     return res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('Webhook handler error', err);
-    return res.status(500).end('server error');
+    console.error("🔥 Razorpay webhook handler error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 }
